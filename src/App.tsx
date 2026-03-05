@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AppLayout } from "@/components/AppLayout";
+import { PasswordGate } from "@/components/PasswordGate";
 import Dashboard from "@/pages/Dashboard";
 import Targets from "@/pages/Targets";
 import PingLog from "@/pages/PingLog";
@@ -18,6 +19,7 @@ const App = () => (
     <TooltipProvider>
       <Toaster />
       <Sonner />
+      <PasswordGate>
       <BrowserRouter>
         <AppLayout>
           <Routes>
@@ -30,6 +32,7 @@ const App = () => (
           </Routes>
         </AppLayout>
       </BrowserRouter>
+      </PasswordGate>
     </TooltipProvider>
   </QueryClientProvider>
 );
