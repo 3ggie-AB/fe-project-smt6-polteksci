@@ -32,6 +32,7 @@ const App = () => (
           </Routes>
         </AppLayout>
       </BrowserRouter>
+      </PasswordGate>
     </TooltipProvider>
   </QueryClientProvider>
 );
