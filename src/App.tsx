@@ -10,6 +10,7 @@ import Targets from "@/pages/Targets";
 import PingLog from "@/pages/PingLog";
 import SurveyPage from "@/pages/SurveyPage";
 import CorrelationPage from "@/pages/CorrelationPage";
+import LoginPage from "@/pages/LoginPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -19,20 +20,48 @@ const App = () => (
     <TooltipProvider>
       <Toaster />
       <Sonner />
-      <PasswordGate>
       <BrowserRouter>
-        <AppLayout>
-          <Routes>
-            <Route path="/" element={<Dashboard />} />
-            <Route path="/targets" element={<Targets />} />
-            <Route path="/pings" element={<PingLog />} />
-            <Route path="/survey" element={<SurveyPage />} />
-            <Route path="/correlation" element={<CorrelationPage />} />
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </AppLayout>
+        <Routes>
+          {/* Public: survey as landing page */}
+          <Route path="/" element={<SurveyPage />} />
+          {/* Login page */}
+          <Route path="/login" element={<LoginPage />} />
+          {/* Protected routes */}
+          <Route
+            path="/dashboard"
+            element={
+              <PasswordGate>
+                <AppLayout><Dashboard /></AppLayout>
+              </PasswordGate>
+            }
+          />
+          <Route
+            path="/targets"
+            element={
+              <PasswordGate>
+                <AppLayout><Targets /></AppLayout>
+              </PasswordGate>
+            }
+          />
+          <Route
+            path="/pings"
+            element={
+              <PasswordGate>
+                <AppLayout><PingLog /></AppLayout>
+              </PasswordGate>
+            }
+          />
+          <Route
+            path="/correlation"
+            element={
+              <PasswordGate>
+                <AppLayout><CorrelationPage /></AppLayout>
+              </PasswordGate>
+            }
+          />
+          <Route path="*" element={<NotFound />} />
+        </Routes>
       </BrowserRouter>
-      </PasswordGate>
     </TooltipProvider>
   </QueryClientProvider>
 );
