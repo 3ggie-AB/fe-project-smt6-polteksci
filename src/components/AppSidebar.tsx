@@ -1,11 +1,11 @@
 import { NavLink as RouterNavLink } from "react-router-dom";
 import { Activity, Target, ClipboardList, GitBranch, LayoutDashboard } from "lucide-react";
+import { ThemeToggle } from "./ThemeToggle";
 
 const links = [
-  { to: "/", label: "Dashboard", icon: LayoutDashboard },
+  { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { to: "/targets", label: "Targets", icon: Target },
   { to: "/pings", label: "Ping Log", icon: Activity },
-  { to: "/survey", label: "Survey", icon: ClipboardList },
   { to: "/correlation", label: "Korelasi", icon: GitBranch },
 ];
 
@@ -24,7 +24,6 @@ export function AppSidebar() {
           <RouterNavLink
             key={to}
             to={to}
-            end={to === "/"}
             className={({ isActive }) =>
               `flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors ${
                 isActive
@@ -38,8 +37,9 @@ export function AppSidebar() {
           </RouterNavLink>
         ))}
       </nav>
-      <div className="p-4 border-t border-border">
-        <div className="flex items-center gap-2">
+      <div className="p-3 border-t border-border space-y-2">
+        <ThemeToggle />
+        <div className="flex items-center gap-2 px-3">
           <div className="pulse-dot pulse-dot-online" />
           <span className="text-xs text-muted-foreground font-mono">Backend: localhost:8080</span>
         </div>
