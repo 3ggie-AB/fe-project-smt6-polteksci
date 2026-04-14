@@ -2,11 +2,11 @@ import { useState } from "react";
 import { Activity, Lock, Eye, EyeOff } from "lucide-react";
 import { toast } from "sonner";
 
-const APP_PASSWORD = "Netmonitor";
+const APP_PASSWORD = "SCINETWORK";
 
 export function PasswordGate({ children }: { children: React.ReactNode }) {
   const [authenticated, setAuthenticated] = useState(
-    () => sessionStorage.getItem("netmonitor_auth") === "true"
+    () => sessionStorage.getItem("scimonitor_auth") === "true"
   );
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -14,7 +14,7 @@ export function PasswordGate({ children }: { children: React.ReactNode }) {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (password === APP_PASSWORD) {
-      sessionStorage.setItem("netmonitor_auth", "true");
+      sessionStorage.setItem("scimonitor_auth", "true");
       setAuthenticated(true);
     } else {
       toast.error("Password salah!");
@@ -30,7 +30,7 @@ export function PasswordGate({ children }: { children: React.ReactNode }) {
           <div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-primary/10 mb-2">
             <Activity className="h-7 w-7 text-primary" />
           </div>
-          <h1 className="text-xl font-bold font-mono text-foreground">NetMonitor</h1>
+          <h1 className="text-xl font-bold font-mono text-foreground">SCI Monitoring Network</h1>
           <p className="text-sm text-muted-foreground">Masukkan password untuk melanjutkan</p>
         </div>
 

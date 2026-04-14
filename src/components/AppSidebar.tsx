@@ -15,7 +15,7 @@ export function AppSidebar() {
       <div className="p-4 border-b border-border">
         <div className="flex items-center gap-2">
           <Activity className="h-6 w-6 text-primary" />
-          <span className="font-mono font-bold text-lg text-foreground">NetMonitor</span>
+          <span className="font-mono font-bold text-lg text-foreground">SCI Monitoring</span>
         </div>
         <p className="text-xs text-muted-foreground mt-1 font-mono">v1.0</p>
       </div>
