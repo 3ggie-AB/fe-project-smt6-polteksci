@@ -134,3 +134,88 @@ function LoadingSkeleton() {
     </div>
   );
 }
+
+function SurveyHistory({ surveys, isLoading }: { surveys?: Survey[]; isLoading: boolean }) {
+  const renderStars = (score: number) => (
+    <div className="flex items-center gap-0.5">
+      {[1, 2, 3, 4, 5].map((s) => (
+        <Star
+          key={s}
+          className={`h-3 w-3 ${s <= score ? "text-warning fill-warning" : "text-muted-foreground/30"}`}
+        />
+      ))}
+    </div>
+  );
+
+  return (
+    <div className="card-glass rounded-lg p-4">
+      <div className="flex items-center gap-2 mb-4">
+        <ClipboardList className="h-5 w-5 text-primary" />
+        <h2 className="text-lg font-semibold text-foreground">Riwayat Survei</h2>
+        {surveys && (
+          <span className="text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary font-mono">
+            {surveys.length} responden
+          </span>
+        )}
+      </div>
+
+      {isLoading && (
+        <div className="space-y-2">
+          {[...Array(3)].map((_, i) => (
+            <div key={i} className="h-10 bg-muted rounded animate-pulse" />
+          ))}
+        </div>
+      )}
+
+      {surveys && surveys.length === 0 && (
+        <p className="text-sm text-muted-foreground text-center py-6">Belum ada data survei.</p>
+      )}
+
+      {surveys && surveys.length > 0 && (
+        <div className="overflow-auto max-h-96">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="text-xs">Nama</TableHead>
+                <TableHead className="text-xs">Lokasi</TableHead>
+                <TableHead className="text-xs text-center">Kecepatan</TableHead>
+                <TableHead className="text-xs text-center">Stabilitas</TableHead>
+                <TableHead className="text-xs text-center">Latensi</TableHead>
+                <TableHead className="text-xs text-center">Ketersediaan</TableHead>
+                <TableHead className="text-xs text-center">Kepuasan</TableHead>
+                <TableHead className="text-xs text-center">Rata-rata</TableHead>
+                <TableHead className="text-xs">Komentar</TableHead>
+                <TableHead className="text-xs">Waktu</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {surveys.map((s) => {
+                const avg = s.avg_score ?? ((s.q1_speed + s.q2_stability + s.q3_latency + s.q4_availability + s.q5_satisfaction) / 5);
+                return (
+                  <TableRow key={s.id}>
+                    <TableCell className="font-medium text-xs">{s.respondent_name || "-"}</TableCell>
+                    <TableCell className="text-xs">{s.location || "-"}</TableCell>
+                    <TableCell className="text-center">{renderStars(s.q1_speed)}</TableCell>
+                    <TableCell className="text-center">{renderStars(s.q2_stability)}</TableCell>
+                    <TableCell className="text-center">{renderStars(s.q3_latency)}</TableCell>
+                    <TableCell className="text-center">{renderStars(s.q4_availability)}</TableCell>
+                    <TableCell className="text-center">{renderStars(s.q5_satisfaction)}</TableCell>
+                    <TableCell className="text-center">
+                      <span className={`font-mono text-xs font-bold ${avg >= 4 ? "text-success" : avg >= 3 ? "text-warning" : "text-destructive"}`}>
+                        {avg.toFixed(1)}
+                      </span>
+                    </TableCell>
+                    <TableCell className="text-xs max-w-32 truncate">{s.comment || "-"}</TableCell>
+                    <TableCell className="text-xs font-mono whitespace-nowrap">
+                      {new Date(s.created_at).toLocaleDateString("id-ID", { day: "2-digit", month: "short", year: "numeric" })}
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        </div>
+      )}
+    </div>
+  );
+}
