@@ -11,6 +11,12 @@ export default function Dashboard() {
     refetchInterval: 10000,
   });
 
+  const { data: surveys, isLoading: surveysLoading } = useQuery({
+    queryKey: ["surveys"],
+    queryFn: api.getSurveys,
+    refetchInterval: 30000,
+  });
+
   return (
     <div className="space-y-6">
       <div>
@@ -46,6 +52,9 @@ export default function Dashboard() {
           <p className="text-xs text-muted-foreground mt-1">Tambahkan target IP terlebih dahulu.</p>
         </div>
       )}
+
+      {/* Survey History */}
+      <SurveyHistory surveys={surveys} isLoading={surveysLoading} />
     </div>
   );
 }
