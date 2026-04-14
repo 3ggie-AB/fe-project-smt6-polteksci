@@ -3,13 +3,13 @@ import { useNavigate } from "react-router-dom";
 import { Activity, Lock, Eye, EyeOff } from "lucide-react";
 import { toast } from "sonner";
 import { ThemeToggle } from "@/components/ThemeToggle";
-
-const APP_PASSWORD = "SCINETWORK";
+import { api, setAuthToken } from "@/lib/api";
 
 export default function LoginPage() {
   const navigate = useNavigate();
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   const isAuthenticated = sessionStorage.getItem("scimonitor_auth") === "true";
 
@@ -18,13 +18,18 @@ export default function LoginPage() {
     return null;
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (password === APP_PASSWORD) {
+    setLoading(true);
+    try {
+      const res = await api.login(password);
+      setAuthToken(res.token);
       sessionStorage.setItem("scimonitor_auth", "true");
       navigate("/dashboard", { replace: true });
-    } else {
-      toast.error("Password salah!");
+    } catch (err: any) {
+      toast.error(err.message || "Password salah!");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -63,9 +68,10 @@ export default function LoginPage() {
           </div>
           <button
             type="submit"
-            className="w-full bg-primary text-primary-foreground px-4 py-2.5 rounded-md text-sm font-medium hover:opacity-90 transition-opacity"
+            disabled={loading}
+            className="w-full bg-primary text-primary-foreground px-4 py-2.5 rounded-md text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-50"
           >
-            Masuk
+            {loading ? "Memproses..." : "Masuk"}
           </button>
         </form>
       </div>

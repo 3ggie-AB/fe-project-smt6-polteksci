@@ -1,10 +1,45 @@
 const BASE_URL = "http://localhost:8080/api";
 
-async function request<T>(path: string, options?: RequestInit): Promise<T> {
+// Token management
+let authToken: string | null = sessionStorage.getItem("scimonitor_token");
+
+export function setAuthToken(token: string) {
+  authToken = token;
+  sessionStorage.setItem("scimonitor_token", token);
+}
+
+export function getAuthToken() {
+  return authToken;
+}
+
+export function clearAuthToken() {
+  authToken = null;
+  sessionStorage.removeItem("scimonitor_token");
+  sessionStorage.removeItem("scimonitor_auth");
+}
+
+async function request<T>(path: string, options?: RequestInit & { noAuth?: boolean }): Promise<T> {
+  const { noAuth, ...fetchOptions } = options || {};
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    ...(fetchOptions.headers as Record<string, string>),
+  };
+
+  if (!noAuth && authToken) {
+    headers["Authorization"] = `Bearer ${authToken}`;
+  }
+
   const res = await fetch(`${BASE_URL}${path}`, {
-    headers: { "Content-Type": "application/json" },
-    ...options,
+    ...fetchOptions,
+    headers,
   });
+
+  if (res.status === 401) {
+    clearAuthToken();
+    window.location.href = "/login";
+    throw new Error("Sesi habis, silakan login kembali");
+  }
+
   if (!res.ok) {
     const err = await res.json().catch(() => ({ error: res.statusText }));
     throw new Error(err.error || res.statusText);
@@ -80,16 +115,28 @@ export interface CorrelationResponse {
   };
 }
 
+export interface LoginResponse {
+  token: string;
+}
+
 // API functions
 export const api = {
-  // Targets
+  // Auth (no token needed)
+  login: (password: string) =>
+    request<LoginResponse>("/login", {
+      method: "POST",
+      body: JSON.stringify({ password }),
+      noAuth: true,
+    }),
+
+  // Targets (protected)
   getTargets: () => request<Target[]>("/targets"),
   addTarget: (data: { ip_address: string; label?: string }) =>
     request<Target>("/targets", { method: "POST", body: JSON.stringify(data) }),
   deleteTarget: (id: number) =>
     request<{ message: string }>(`/targets/${id}`, { method: "DELETE" }),
 
-  // Pings
+  // Pings (protected)
   getLatestPings: () => request<PingResult[]>("/pings/latest"),
   getPingHistory: (params?: { ip?: string; hours?: number }) => {
     const searchParams = new URLSearchParams();
@@ -100,7 +147,7 @@ export const api = {
   },
   getPingSummary: () => request<PingSummary[]>("/pings/summary"),
 
-  // Surveys
+  // Surveys - submit is public (no auth)
   submitSurvey: (data: {
     respondent_name?: string;
     location?: string;
@@ -113,10 +160,12 @@ export const api = {
   }) => request<{ message: string; avg_score: number; survey: Survey }>("/surveys", {
     method: "POST",
     body: JSON.stringify(data),
+    noAuth: true,
   }),
+  // Surveys list (protected)
   getSurveys: () => request<Survey[]>("/surveys"),
 
-  // Correlation
+  // Correlation (protected)
   getCorrelation: (days?: number) => {
     const qs = days ? `?days=${days}` : "";
     return request<CorrelationResponse>(`/correlation${qs}`);
