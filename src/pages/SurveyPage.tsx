@@ -3,8 +3,9 @@ import { api } from "@/lib/api";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-import { Star, Send, Activity, LogIn } from "lucide-react";
+import { Star, Send, LogIn } from "lucide-react";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { NetworkBackground } from "@/components/NetworkBackground";
 
 export default function SurveyPage() {
   const navigate = useNavigate();
@@ -47,12 +48,13 @@ export default function SurveyPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-background p-4 md:p-8">
-      <div className="max-w-lg mx-auto space-y-6">
+    <div className="min-h-screen bg-background p-4 md:p-8 relative">
+      <NetworkBackground />
+      <div className="max-w-lg mx-auto space-y-6 relative z-10">
         {/* Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <Activity className="h-6 w-6 text-primary" />
+            <img src="/logos.webp" alt="SCI Logo" className="h-10 w-10 animate-heartbeat" />
             <div>
               <h1 className="text-2xl font-bold text-foreground font-mono">Survey Kepuasan Jaringan</h1>
               <p className="text-sm text-muted-foreground">SCI Monitoring Network</p>
@@ -97,8 +99,7 @@ export default function SurveyPage() {
                     className="p-1 transition-colors"
                   >
                     <Star
-                      className={`h-6 w-6 ${score <= form[q.key] ? "text-warning fill-warning" : "text-muted-foreground"
-                        }`}
+                      className={`h-6 w-6 ${score <= form[q.key] ? "text-warning fill-warning" : "text-muted-foreground"}`}
                     />
                   </button>
                 ))}
