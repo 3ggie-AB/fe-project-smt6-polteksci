@@ -3,7 +3,7 @@ import { Navigate, useNavigate } from "react-router-dom";
 import { Activity, Lock, Eye, EyeOff } from "lucide-react";
 import { toast } from "sonner";
 import { ThemeToggle } from "@/components/ThemeToggle";
-import { api, setAuthToken } from "@/lib/api";
+import { api, setAuthToken, isAuthenticated } from "@/lib/api";
 
 export default function LoginPage() {
   const navigate = useNavigate();
@@ -11,9 +11,7 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  const isAuthenticated = sessionStorage.getItem("scimonitor_auth") === "true";
-
-  if (isAuthenticated) {
+  if (isAuthenticated()) {
     return <Navigate to="/dashboard" replace />;
   }
 
@@ -23,7 +21,6 @@ export default function LoginPage() {
     try {
       const res = await api.login(password);
       setAuthToken(res.token);
-      sessionStorage.setItem("scimonitor_auth", "true");
       navigate("/dashboard", { replace: true });
     } catch (err: any) {
       toast.error(err.message || "Password salah!");

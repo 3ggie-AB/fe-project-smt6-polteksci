@@ -1,10 +1,8 @@
 import { Navigate } from "react-router-dom";
-import { getAuthToken } from "@/lib/api";
+import { isAuthenticated } from "@/lib/api";
 
 export function PasswordGate({ children }: { children: React.ReactNode }) {
-  const authenticated = sessionStorage.getItem("scimonitor_auth") === "true" && getAuthToken();
-
-  if (!authenticated) {
+  if (!isAuthenticated()) {
     return <Navigate to="/login" replace />;
   }
 

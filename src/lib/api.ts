@@ -1,6 +1,6 @@
 const BASE_URL = "http://localhost:8080/api";
 
-// Token management
+// Token management — token is the single source of truth
 let authToken: string | null = sessionStorage.getItem("scimonitor_token");
 
 export function setAuthToken(token: string) {
@@ -12,10 +12,13 @@ export function getAuthToken() {
   return authToken;
 }
 
+export function isAuthenticated() {
+  return !!getAuthToken();
+}
+
 export function clearAuthToken() {
   authToken = null;
   sessionStorage.removeItem("scimonitor_token");
-  sessionStorage.removeItem("scimonitor_auth");
 }
 
 async function request<T>(path: string, options?: RequestInit & { noAuth?: boolean }): Promise<T> {
