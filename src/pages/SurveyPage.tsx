@@ -2,7 +2,7 @@ import { useMutation } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { useState } from "react";
 import { toast } from "sonner";
-import { Star, Send, Activity } from "lucide-react";
+import { Star, Send, Activity, LogIn } from "lucide-react";
 import { ThemeToggle } from "@/components/ThemeToggle";
 
 export default function SurveyPage() {
@@ -95,9 +95,8 @@ export default function SurveyPage() {
                     className="p-1 transition-colors"
                   >
                     <Star
-                      className={`h-6 w-6 ${
-                        score <= form[q.key] ? "text-warning fill-warning" : "text-muted-foreground"
-                      }`}
+                      className={`h-6 w-6 ${score <= form[q.key] ? "text-warning fill-warning" : "text-muted-foreground"
+                        }`}
                     />
                   </button>
                 ))}
@@ -119,14 +118,24 @@ export default function SurveyPage() {
             />
           </div>
 
-          <button
-            type="submit"
-            disabled={mutation.isPending}
-            className="flex items-center gap-2 bg-primary text-primary-foreground px-5 py-2.5 rounded-md text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-50 w-full justify-center"
-          >
-            <Send className="h-4 w-4" />
-            Kirim Survey
-          </button>
+          <div className="d-flex w-100 gap-2">
+            <button
+              type="submit"
+              disabled={mutation.isPending}
+              className="flex-fill d-flex align-items-center justify-content-center gap-2 bg-success text-white px-5 py-2.5 rounded"
+            >
+              <Send className="h-4 w-4" />
+              Kirim Survey
+            </button>
+
+            <button
+              type="button"
+              className="flex-fill d-flex align-items-center justify-content-center gap-2 bg-blue-500 text-white px-5 py-2.5 rounded hover:bg-blue-600"
+            >
+              <LogIn className="h-4 w-4" />
+              Login Admin
+            </button>
+          </div>
         </form>
       </div>
     </div>
