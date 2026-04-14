@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { Navigate, useNavigate } from "react-router-dom";
-import { Activity, Lock, Eye, EyeOff } from "lucide-react";
+import { Lock, Eye, EyeOff } from "lucide-react";
 import { toast } from "sonner";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { NetworkBackground } from "@/components/NetworkBackground";
 import { api, setAuthToken, isAuthenticated } from "@/lib/api";
 
 export default function LoginPage() {
@@ -31,13 +32,14 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4 relative">
-      <div className="absolute top-4 right-4">
+      <NetworkBackground />
+      <div className="absolute top-4 right-4 z-10">
         <ThemeToggle />
       </div>
-      <div className="card-glass rounded-xl p-8 w-full max-w-sm space-y-6 glow-cyan">
+      <div className="card-glass rounded-xl p-8 w-full max-w-sm space-y-6 glow-cyan relative z-10">
         <div className="text-center space-y-2">
-          <div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-primary/10 mb-2">
-            <Activity className="h-7 w-7 text-primary" />
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/10 mb-2">
+            <img src="/logos.webp" alt="SCI Logo" className="h-10 w-10 animate-heartbeat" />
           </div>
           <h1 className="text-xl font-bold font-mono text-foreground">SCI Monitoring Network</h1>
           <p className="text-sm text-muted-foreground">Masukkan password untuk melanjutkan</p>

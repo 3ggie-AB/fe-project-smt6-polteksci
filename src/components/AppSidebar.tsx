@@ -22,7 +22,7 @@ export function AppSidebar() {
     <aside className="fixed left-0 top-0 h-full w-56 bg-card border-r border-border flex flex-col z-50">
       <div className="p-4 border-b border-border">
         <div className="flex items-center gap-2">
-          <Activity className="h-6 w-6 text-primary" />
+          <img src="/logos.webp" alt="SCI Logo" className="h-8 w-8 animate-heartbeat" />
           <span className="font-mono font-bold text-lg text-foreground">SCI Monitoring</span>
         </div>
         <p className="text-xs text-muted-foreground mt-1 font-mono">v1.0</p>
