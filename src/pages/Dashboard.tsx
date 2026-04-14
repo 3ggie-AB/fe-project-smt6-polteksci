@@ -1,7 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
-import { api, PingSummary } from "@/lib/api";
-import { Activity, Clock, Wifi, WifiOff, Gauge } from "lucide-react";
+import { api, PingSummary, Survey } from "@/lib/api";
+import { Activity, Clock, Wifi, WifiOff, Gauge, ClipboardList, Star } from "lucide-react";
 import { LatencyChart } from "@/components/LatencyChart";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 export default function Dashboard() {
   const { data: summary, isLoading, error } = useQuery({
