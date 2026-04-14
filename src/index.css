@@ -5,7 +5,8 @@
 @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap');
 
 @layer base {
-  :root {
+  :root,
+  .dark {
     --background: 220 20% 7%;
     --foreground: 210 20% 92%;
 
@@ -59,6 +60,57 @@
     --chart-3: 38 92% 50%;
     --chart-4: 280 65% 60%;
     --chart-5: 0 72% 52%;
+  }
+
+  .light {
+    --background: 0 0% 98%;
+    --foreground: 220 20% 12%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 220 20% 12%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 220 20% 12%;
+
+    --primary: 160 84% 36%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 220 14% 92%;
+    --secondary-foreground: 220 16% 30%;
+
+    --muted: 220 14% 95%;
+    --muted-foreground: 215 14% 45%;
+
+    --accent: 185 72% 40%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 72% 50%;
+    --destructive-foreground: 0 0% 100%;
+
+    --success: 142 72% 36%;
+    --success-foreground: 0 0% 100%;
+
+    --warning: 38 92% 45%;
+    --warning-foreground: 220 20% 7%;
+
+    --border: 220 14% 85%;
+    --input: 220 14% 85%;
+    --ring: 160 84% 36%;
+
+    --sidebar-background: 0 0% 97%;
+    --sidebar-foreground: 220 16% 30%;
+    --sidebar-primary: 160 84% 36%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 220 14% 92%;
+    --sidebar-accent-foreground: 220 16% 30%;
+    --sidebar-border: 220 14% 88%;
+    --sidebar-ring: 160 84% 36%;
+
+    --chart-1: 160 84% 36%;
+    --chart-2: 185 72% 40%;
+    --chart-3: 38 92% 45%;
+    --chart-4: 280 65% 50%;
+    --chart-5: 0 72% 50%;
   }
 }
 
