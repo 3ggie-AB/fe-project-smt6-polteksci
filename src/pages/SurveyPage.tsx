@@ -1,11 +1,13 @@
 import { useMutation } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { Star, Send, Activity, LogIn } from "lucide-react";
 import { ThemeToggle } from "@/components/ThemeToggle";
 
 export default function SurveyPage() {
+  const navigate = useNavigate();
   const [form, setForm] = useState({
     respondent_name: "",
     location: "",
@@ -118,11 +120,11 @@ export default function SurveyPage() {
             />
           </div>
 
-          <div className="d-flex w-100 gap-2">
+          <div className="flex gap-2">
             <button
               type="submit"
               disabled={mutation.isPending}
-              className="flex-fill d-flex align-items-center justify-content-center gap-2 bg-success text-white px-5 py-2.5 rounded"
+              className="flex-1 flex items-center justify-center gap-2 bg-primary text-primary-foreground px-5 py-2.5 rounded-md text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-50"
             >
               <Send className="h-4 w-4" />
               Kirim Survey
@@ -130,7 +132,8 @@ export default function SurveyPage() {
 
             <button
               type="button"
-              className="flex-fill d-flex align-items-center justify-content-center gap-2 bg-blue-500 text-white px-5 py-2.5 rounded hover:bg-blue-600"
+              onClick={() => navigate("/login")}
+              className="flex-1 flex items-center justify-center gap-2 bg-secondary text-secondary-foreground px-5 py-2.5 rounded-md text-sm font-medium hover:bg-secondary/80 transition-colors border border-border"
             >
               <LogIn className="h-4 w-4" />
               Login Admin
