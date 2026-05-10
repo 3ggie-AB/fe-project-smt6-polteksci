@@ -2,16 +2,16 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AppLayout } from "@/components/AppLayout";
 import { PasswordGate } from "@/components/PasswordGate";
 import Dashboard from "@/pages/Dashboard";
 import Targets from "@/pages/Targets";
 import PingLog from "@/pages/PingLog";
-import SurveyPage from "@/pages/SurveyPage";
 import CorrelationPage from "@/pages/CorrelationPage";
 import LoginPage from "@/pages/LoginPage";
 import LandingPage from "@/pages/LandingPage";
+import Notifications from "@/pages/Notifications";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -23,13 +23,8 @@ const App = () => (
       <Sonner />
       <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <Routes>
-          {/* Public landing page explaining the system */}
           <Route path="/" element={<LandingPage />} />
-          {/* Public survey */}
-          <Route path="/survey" element={<SurveyPage />} />
-          {/* Login page */}
           <Route path="/login" element={<LoginPage />} />
-          {/* Protected routes */}
           <Route
             path="/dashboard"
             element={
@@ -39,7 +34,7 @@ const App = () => (
             }
           />
           <Route
-            path="/targets"
+            path="/devices"
             element={
               <PasswordGate>
                 <AppLayout><Targets /></AppLayout>
@@ -47,7 +42,7 @@ const App = () => (
             }
           />
           <Route
-            path="/pings"
+            path="/stream"
             element={
               <PasswordGate>
                 <AppLayout><PingLog /></AppLayout>
@@ -55,13 +50,24 @@ const App = () => (
             }
           />
           <Route
-            path="/correlation"
+            path="/notifications"
+            element={
+              <PasswordGate>
+                <AppLayout><Notifications /></AppLayout>
+              </PasswordGate>
+            }
+          />
+          <Route
+            path="/features"
             element={
               <PasswordGate>
                 <AppLayout><CorrelationPage /></AppLayout>
               </PasswordGate>
             }
           />
+          <Route path="/targets" element={<Navigate to="/devices" replace />} />
+          <Route path="/pings" element={<Navigate to="/stream" replace />} />
+          <Route path="/correlation" element={<Navigate to="/features" replace />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>

@@ -1,8 +1,8 @@
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-
-@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap');
 
 @layer base {
   :root,
@@ -157,6 +157,10 @@
   .stat-value {
     font-family: var(--font-mono);
     @apply text-2xl font-bold tracking-tight;
+  }
+
+  .field-input {
+    @apply w-full rounded-md border border-border bg-secondary px-3 py-2 text-sm text-foreground outline-none transition-shadow focus:ring-1 focus:ring-primary;
   }
 
   .pulse-dot {

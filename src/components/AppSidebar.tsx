@@ -1,17 +1,25 @@
 import { NavLink as RouterNavLink, useNavigate } from "react-router-dom";
-import { Activity, Target, ClipboardList, GitBranch, LayoutDashboard, LogOut } from "lucide-react";
+import { Activity, Bell, Cpu, LayoutDashboard, LogOut, Radio, Server } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
 import { ThemeToggle } from "./ThemeToggle";
-import { clearAuthToken } from "@/lib/api";
+import { API_ORIGIN, api, clearAuthToken, getStoredUser } from "@/lib/api";
 
 const links = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { to: "/targets", label: "Targets", icon: Target },
-  { to: "/pings", label: "Ping Log", icon: Activity },
-  { to: "/correlation", label: "Korelasi", icon: GitBranch },
+  { to: "/devices", label: "Devices", icon: Server },
+  { to: "/stream", label: "Realtime", icon: Radio },
+  { to: "/notifications", label: "Notifications", icon: Bell },
+  { to: "/features", label: "ML Features", icon: Cpu },
 ];
 
 export function AppSidebar() {
   const navigate = useNavigate();
+  const storedUser = getStoredUser();
+  const { data: identity } = useQuery({
+    queryKey: ["me"],
+    queryFn: api.me,
+    retry: false,
+  });
 
   const handleLogout = () => {
     clearAuthToken();
@@ -22,10 +30,10 @@ export function AppSidebar() {
     <aside className="fixed left-0 top-0 h-full w-56 bg-card border-r border-border flex flex-col z-50">
       <div className="p-4 border-b border-border">
         <div className="flex items-center gap-2">
-          <img src="/logos.webp" alt="SCI Logo" className="h-8 w-8 animate-heartbeat" />
-          <span className="font-mono font-bold text-lg text-foreground">SCI Monitoring</span>
+          <img src="/logos.webp" alt="NetMonitor Logo" className="h-8 w-8 animate-heartbeat" />
+          <span className="font-mono font-bold text-lg text-foreground">NetMonitor</span>
         </div>
-        <p className="text-xs text-muted-foreground mt-1 font-mono">v1.0</p>
+        <p className="text-xs text-muted-foreground mt-1 font-mono">API v2.1</p>
       </div>
       <nav className="flex-1 p-3 space-y-1">
         {links.map(({ to, label, icon: Icon }) => (
@@ -46,6 +54,14 @@ export function AppSidebar() {
         ))}
       </nav>
       <div className="p-3 border-t border-border space-y-2">
+        <div className="px-3 py-2 rounded-md bg-secondary/50 border border-border">
+          <p className="text-xs font-mono text-foreground truncate">
+            {identity?.email || storedUser?.email || "Authenticated"}
+          </p>
+          <p className="text-[11px] text-muted-foreground font-mono">
+            {identity?.role || storedUser?.role?.name || "JWT active"}
+          </p>
+        </div>
         <ThemeToggle />
         <button
           onClick={handleLogout}
@@ -55,8 +71,8 @@ export function AppSidebar() {
           Logout
         </button>
         <div className="flex items-center gap-2 px-3">
-          <div className="pulse-dot pulse-dot-online" />
-          <span className="text-xs text-muted-foreground font-mono">Backend: localhost:8080</span>
+          <Activity className="h-3.5 w-3.5 text-primary" />
+          <span className="text-xs text-muted-foreground font-mono truncate">{API_ORIGIN}</span>
         </div>
       </div>
     </aside>
