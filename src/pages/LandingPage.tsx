@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { useEffect, useState } from "react";
 import {
   LogIn,
   ClipboardList,
@@ -12,9 +13,19 @@ import {
   ShieldCheck,
   LineChart,
   Network,
+  Download,
+  Info,
 } from "lucide-react";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { NetworkBackground } from "@/components/NetworkBackground";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { toast } from "sonner";
 
 const flowSteps = [
   {
@@ -67,9 +78,110 @@ const flowSteps = [
   },
 ];
 
-const sources = ["Ping Monitoring", "TCP Monitoring", "Ruijie API", "SNMP", "Syslog", "MySQL Metadata"];
+const sources: { name: string; short: string; desc: string; details: string[] }[] = [
+  {
+    name: "Ping Monitoring",
+    short: "ICMP echo untuk cek konektivitas dan latensi target.",
+    desc: "Backend mengirim paket ICMP secara berkala ke setiap IP target untuk mengukur latensi (ms), packet loss (%), dan status reachable.",
+    details: [
+      "Mengirim ICMP echo request setiap interval",
+      "Menghitung latency rata-rata, min, max",
+      "Mendeteksi packet loss dan timeout",
+      "Hasil disimpan ke InfluxDB untuk time-series analysis",
+    ],
+  },
+  {
+    name: "TCP Monitoring",
+    short: "Cek port TCP layanan untuk memastikan service berjalan.",
+    desc: "Melakukan TCP handshake ke port spesifik (80, 443, 22, dsb) untuk memastikan layanan aktif dan responsif.",
+    details: [
+      "Membuka koneksi TCP ke port target",
+      "Mengukur waktu handshake (connect time)",
+      "Mendeteksi service down meski host masih reachable",
+      "Cocok untuk monitoring web server, database, SSH",
+    ],
+  },
+  {
+    name: "Ruijie API",
+    short: "Integrasi API perangkat Ruijie untuk metrik level enterprise.",
+    desc: "Mengambil data dari controller Ruijie via REST API: status AP, jumlah client, throughput, dan event jaringan.",
+    details: [
+      "Polling data dari Ruijie Cloud / Controller",
+      "Statistik Access Point dan client wireless",
+      "Event login/logout dan roaming client",
+      "Throughput per SSID dan per device",
+    ],
+  },
+  {
+    name: "SNMP",
+    short: "Simple Network Management Protocol untuk metrik perangkat.",
+    desc: "Mengambil metrik dari router/switch/server menggunakan SNMP v2c/v3: CPU, memory, traffic interface, dan uptime.",
+    details: [
+      "Polling OID standard (ifInOctets, ifOutOctets, dsb)",
+      "Mendukung SNMP v2c dan v3 (auth + encryption)",
+      "Metrik CPU, RAM, disk, suhu perangkat",
+      "Bandwidth per interface, error rate, discard",
+    ],
+  },
+  {
+    name: "Syslog",
+    short: "Menerima log perangkat secara real-time via UDP/TCP 514.",
+    desc: "Server Syslog menerima pesan log dari perangkat jaringan untuk audit, troubleshooting, dan deteksi anomali.",
+    details: [
+      "Listener UDP/TCP pada port 514",
+      "Parsing severity level (emergency → debug)",
+      "Korelasi event dengan ML Engine",
+      "Disimpan untuk forensic & audit trail",
+    ],
+  },
+  {
+    name: "MySQL Metadata",
+    short: "Database metadata untuk konfigurasi target dan user.",
+    desc: "MySQL menyimpan metadata: daftar IP target, user admin, konfigurasi alert, dan threshold monitoring.",
+    details: [
+      "Tabel users, targets, alerts, thresholds",
+      "Diakses backend Golang via GORM",
+      "Sumber kebenaran untuk konfigurasi sistem",
+      "Bukan untuk data time-series (itu di InfluxDB)",
+    ],
+  },
+];
+
+type SourceItem = (typeof sources)[number];
 
 export default function LandingPage() {
+  const [activeSource, setActiveSource] = useState<SourceItem | null>(null);
+  const [installPrompt, setInstallPrompt] = useState<any>(null);
+  const [isInstalled, setIsInstalled] = useState(false);
+
+  useEffect(() => {
+    const handler = (e: Event) => {
+      e.preventDefault();
+      setInstallPrompt(e);
+    };
+    window.addEventListener("beforeinstallprompt", handler);
+    if (window.matchMedia("(display-mode: standalone)").matches) {
+      setIsInstalled(true);
+    }
+    return () => window.removeEventListener("beforeinstallprompt", handler);
+  }, []);
+
+  const handleInstall = async () => {
+    if (!installPrompt) {
+      toast.info(
+        "Buka menu browser → 'Install app' / 'Add to Home Screen' untuk menginstal. (iOS: Share → Add to Home Screen)"
+      );
+      return;
+    }
+    installPrompt.prompt();
+    const { outcome } = await installPrompt.userChoice;
+    if (outcome === "accepted") {
+      toast.success("Aplikasi berhasil diinstal!");
+      setIsInstalled(true);
+    }
+    setInstallPrompt(null);
+  };
+
   return (
     <div className="min-h-screen bg-background relative">
       <NetworkBackground />
@@ -84,7 +196,18 @@ export default function LandingPage() {
               <p className="text-xs md:text-sm text-muted-foreground">Sistem monitoring jaringan cerdas berbasis ML</p>
             </div>
           </div>
-          <ThemeToggle />
+          <div className="flex items-center gap-2">
+            {!isInstalled && (
+              <button
+                onClick={handleInstall}
+                className="inline-flex items-center gap-2 bg-primary text-primary-foreground px-3 py-2 rounded-md text-xs font-medium hover:opacity-90 transition-opacity"
+              >
+                <Download className="h-3.5 w-3.5" />
+                Install App
+              </button>
+            )}
+            <ThemeToggle />
+          </div>
         </header>
 
         {/* Hero */}
@@ -155,14 +278,19 @@ export default function LandingPage() {
             Backend Golang mengumpulkan data dari berbagai sumber berikut sebelum diteruskan ke InfluxDB dan ML
             Engine.
           </p>
-          <div className="flex flex-wrap gap-2">
+          <div className="grid gap-2 sm:grid-cols-2 md:grid-cols-3">
             {sources.map((src) => (
-              <span
-                key={src}
-                className="text-xs font-mono px-3 py-1.5 rounded-full bg-secondary border border-border text-foreground"
+              <button
+                key={src.name}
+                onClick={() => setActiveSource(src)}
+                className="group text-left text-xs px-3 py-3 rounded-lg bg-secondary border border-border hover:border-primary/60 hover:bg-secondary/80 transition-colors flex items-start gap-2"
               >
-                {src}
-              </span>
+                <Info className="h-3.5 w-3.5 text-primary mt-0.5 shrink-0 group-hover:scale-110 transition-transform" />
+                <div>
+                  <p className="font-mono font-semibold text-foreground">{src.name}</p>
+                  <p className="text-muted-foreground text-[11px] mt-0.5">{src.short}</p>
+                </div>
+              </button>
             ))}
           </div>
         </section>
@@ -187,6 +315,33 @@ export default function LandingPage() {
           © {new Date().getFullYear()} SCI Monitoring Network
         </footer>
       </div>
+
+      <Dialog open={!!activeSource} onOpenChange={(o) => !o && setActiveSource(null)}>
+        <DialogContent className="max-w-md">
+          {activeSource && (
+            <>
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2">
+                  <Database className="h-5 w-5 text-primary" />
+                  {activeSource.name}
+                </DialogTitle>
+                <DialogDescription>{activeSource.desc}</DialogDescription>
+              </DialogHeader>
+              <div className="space-y-2">
+                <p className="text-xs font-semibold text-foreground uppercase tracking-wider">Detail</p>
+                <ul className="space-y-1.5">
+                  {activeSource.details.map((d) => (
+                    <li key={d} className="text-sm text-muted-foreground flex gap-2">
+                      <span className="text-primary mt-0.5">•</span>
+                      <span>{d}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
