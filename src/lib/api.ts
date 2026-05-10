@@ -111,15 +111,12 @@ export interface Device {
   model?: string;
   location?: string;
   device_type?: string;
-  tcp_port?: number;
-  ping_interval_sec?: number;
-  tcp_interval_sec?: number;
   snmp_version?: string;
   ruijie_external_id?: string;
   is_active: boolean;
   last_seen_at?: string | null;
-  created_at: string;
-  updated_at: string;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface DevicePayload {
@@ -130,12 +127,38 @@ export interface DevicePayload {
   model?: string;
   location?: string;
   device_type?: string;
-  tcp_port?: number;
-  ping_interval_sec?: number;
-  tcp_interval_sec?: number;
   snmp_community?: string;
   snmp_version?: string;
   ruijie_external_id?: string;
+  is_active?: boolean;
+}
+
+export type MonitoringCheckType = "ping" | "tcp" | "http" | "url" | "server" | string;
+
+export interface MonitoringTarget {
+  id: number;
+  workspace_id: number;
+  name: string;
+  host: string;
+  check_type: MonitoringCheckType;
+  port: number;
+  interval_sec: number;
+  timeout_sec: number;
+  description?: string;
+  is_active: boolean;
+  last_status?: boolean | null;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface MonitoringTargetPayload {
+  name: string;
+  host: string;
+  check_type: MonitoringCheckType;
+  port?: number;
+  interval_sec?: number;
+  timeout_sec?: number;
+  description?: string;
   is_active?: boolean;
 }
 
@@ -144,6 +167,7 @@ export interface Notification {
   workspace_id: number;
   user_id: number | null;
   device_id: number | null;
+  target_id?: number | null;
   type: string;
   severity: Severity;
   title: string;
@@ -157,6 +181,7 @@ export interface RealtimeEvent {
   severity: Severity;
   workspace: string;
   device_id?: number;
+  target_id?: number;
   ip?: string;
   title: string;
   message: string;
@@ -165,13 +190,14 @@ export interface RealtimeEvent {
 }
 
 export interface FeatureVector {
-  device_id: number;
+  device_id?: number;
+  target_id?: number;
   workspace: string;
-  latency_rolling_avg_ms: number;
-  packet_loss_ratio: number;
-  ap_load_score: number;
-  roaming_frequency: number;
-  traffic_anomaly_score: number;
+  latency_rolling_avg_ms?: number;
+  packet_loss_ratio?: number;
+  ap_load_score?: number;
+  roaming_frequency?: number;
+  traffic_anomaly_score?: number;
   timestamp: string;
 }
 
@@ -300,9 +326,20 @@ export const api = {
   deleteDevice: (id: number) =>
     request<{ message: string }>(`/devices/${id}`, { method: "DELETE" }),
 
+  getMonitoringTargets: () => request<MonitoringTarget[]>("/targets"),
+  addMonitoringTarget: (data: MonitoringTargetPayload) =>
+    request<MonitoringTarget>("/targets", { method: "POST", body: JSON.stringify(data) }),
+  deleteMonitoringTarget: (id: number) =>
+    request<{ message: string }>(`/targets/${id}`, { method: "DELETE" }),
+
   getNotifications: () => request<Notification[]>("/notifications"),
   markNotificationRead: (id: number) =>
     request<{ message: string }>(`/notifications/${id}/read`, { method: "POST" }),
+
+  getDeviceFeatureVector: (deviceId: number) =>
+    request<FeatureResponse>(`/ml/features/${deviceId}`),
+  getTargetFeatureVector: (targetId: number) =>
+    request<FeatureResponse>(`/ml/features/targets/${targetId}`),
 
   getFeatureVector: (deviceId: number) =>
     request<FeatureResponse>(`/ml/features/${deviceId}`),
@@ -314,9 +351,9 @@ export const api = {
       body: JSON.stringify({ password }),
       noAuth: true,
     }),
-  getTargets: () => request<Target[]>("/targets"),
-  addTarget: (data: { ip_address: string; label?: string }) =>
-    request<Target>("/targets", { method: "POST", body: JSON.stringify(data) }),
+  getTargets: () => request<MonitoringTarget[]>("/targets"),
+  addTarget: (data: MonitoringTargetPayload) =>
+    request<MonitoringTarget>("/targets", { method: "POST", body: JSON.stringify(data) }),
   deleteTarget: (id: number) =>
     request<{ message: string }>(`/targets/${id}`, { method: "DELETE" }),
   getLatestPings: () => request<PingResult[]>("/pings/latest"),

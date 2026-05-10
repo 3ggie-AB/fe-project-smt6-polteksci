@@ -75,6 +75,16 @@ export default function PingLog() {
                       {event.ip}
                     </span>
                   )}
+                  {event.target_id && (
+                    <span className="rounded-full border border-border bg-secondary/70 px-2 py-0.5 text-[11px] font-mono text-muted-foreground">
+                      target #{event.target_id}
+                    </span>
+                  )}
+                  {event.device_id && (
+                    <span className="rounded-full border border-border bg-secondary/70 px-2 py-0.5 text-[11px] font-mono text-muted-foreground">
+                      device #{event.device_id}
+                    </span>
+                  )}
                 </div>
                 <h2 className="mt-3 text-base font-semibold text-foreground">{event.title}</h2>
                 <p className="text-sm text-muted-foreground">{event.message}</p>

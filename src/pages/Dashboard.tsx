@@ -1,6 +1,13 @@
 import type { ElementType } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { api, Device, HealthResponse, Notification as NetNotification, RealtimeEvent } from "@/lib/api";
+import {
+  api,
+  Device,
+  HealthResponse,
+  MonitoringTarget,
+  Notification as NetNotification,
+  RealtimeEvent,
+} from "@/lib/api";
 import { useRealtimeEvents } from "@/hooks/use-realtime-events";
 import {
   Activity,
@@ -11,6 +18,7 @@ import {
   Database,
   Radio,
   Server,
+  ServerCog,
   ShieldAlert,
   Wifi,
   WifiOff,
@@ -30,6 +38,12 @@ export default function Dashboard() {
     refetchInterval: 10000,
   });
 
+  const { data: targets, isLoading: targetsLoading, error: targetsError } = useQuery({
+    queryKey: ["monitoringTargets"],
+    queryFn: api.getMonitoringTargets,
+    refetchInterval: 10000,
+  });
+
   const { data: notifications, isLoading: notificationsLoading } = useQuery({
     queryKey: ["notifications"],
     queryFn: api.getNotifications,
@@ -38,6 +52,8 @@ export default function Dashboard() {
 
   const realtime = useRealtimeEvents(8);
   const activeDevices = devices?.filter((device) => device.is_active).length || 0;
+  const activeTargets = targets?.filter((target) => target.is_active).length || 0;
+  const downTargets = targets?.filter((target) => target.last_status === false).length || 0;
   const criticalNotifications =
     notifications?.filter((item) => item.severity === "critical" || item.severity === "error").length || 0;
 
@@ -56,14 +72,21 @@ export default function Dashboard() {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 xl:grid-cols-6 gap-4">
         <MetricCard
-          label="Total Device"
+          label="Devices"
           value={devices?.length ?? (devicesLoading ? "..." : 0)}
           icon={Server}
           accent="text-primary"
         />
-        <MetricCard label="Active" value={activeDevices} icon={Wifi} accent="text-success" />
+        <MetricCard label="Active Device" value={activeDevices} icon={Wifi} accent="text-success" />
+        <MetricCard
+          label="Targets"
+          value={targets?.length ?? (targetsLoading ? "..." : 0)}
+          icon={ServerCog}
+          accent="text-accent"
+        />
+        <MetricCard label="Down Target" value={downTargets} icon={WifiOff} accent="text-destructive" />
         <MetricCard
           label="Unread Alert"
           value={notifications?.length ?? (notificationsLoading ? "..." : 0)}
@@ -93,6 +116,7 @@ export default function Dashboard() {
       </div>
 
       <DeviceOverview devices={devices} isLoading={devicesLoading} error={devicesError as Error | null} />
+      <TargetOverview targets={targets} isLoading={targetsLoading} error={targetsError as Error | null} />
     </div>
   );
 }
@@ -218,14 +242,98 @@ function EventItem({ event }: { event: RealtimeEvent }) {
   return (
     <div className="rounded-md border border-border bg-secondary/40 px-3 py-2">
       <div className="flex items-center justify-between gap-2">
-        <span className={`rounded-full border px-2 py-0.5 text-[11px] font-mono ${severityClass(event.severity)}`}>
-          {event.type}
-        </span>
+        <div className="flex flex-wrap items-center gap-2">
+          <span className={`rounded-full border px-2 py-0.5 text-[11px] font-mono ${severityClass(event.severity)}`}>
+            {event.type}
+          </span>
+          {event.target_id && (
+            <span className="rounded-full border border-border bg-background/60 px-2 py-0.5 text-[11px] font-mono text-muted-foreground">
+              target #{event.target_id}
+            </span>
+          )}
+        </div>
         <span className="text-[11px] text-muted-foreground font-mono">{formatDateTime(event.occurred_at)}</span>
       </div>
       <p className="mt-2 text-sm font-medium text-foreground">{event.title}</p>
       <p className="text-xs text-muted-foreground">{event.message}</p>
     </div>
+  );
+}
+
+function TargetOverview({
+  targets,
+  isLoading,
+  error,
+}: {
+  targets?: MonitoringTarget[];
+  isLoading: boolean;
+  error?: Error | null;
+}) {
+  return (
+    <section className="card-glass rounded-lg overflow-hidden">
+      <div className="flex items-center justify-between border-b border-border px-4 py-3">
+        <div className="flex items-center gap-2">
+          <ServerCog className="h-5 w-5 text-accent" />
+          <h2 className="text-lg font-semibold text-foreground">Monitoring Targets</h2>
+        </div>
+        <span className="text-xs text-muted-foreground font-mono">{targets?.length || 0} target</span>
+      </div>
+      {error && (
+        <div className="px-4 py-6 text-sm text-destructive">
+          <ShieldAlert className="inline h-4 w-4 mr-2" />
+          {error.message}
+        </div>
+      )}
+      <div className="overflow-x-auto">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Status</TableHead>
+              <TableHead>Target</TableHead>
+              <TableHead>Host</TableHead>
+              <TableHead>Type</TableHead>
+              <TableHead>Interval</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {isLoading &&
+              [...Array(4)].map((_, index) => (
+                <TableRow key={index}>
+                  <TableCell colSpan={5}>
+                    <div className="h-4 bg-muted rounded animate-pulse" />
+                  </TableCell>
+                </TableRow>
+              ))}
+            {targets?.map((target) => (
+              <TableRow key={target.id}>
+                <TableCell>
+                  <span className={`rounded-full border px-2 py-0.5 text-[11px] font-mono ${targetStatusClass(target.last_status)}`}>
+                    {targetStatus(target.last_status)}
+                  </span>
+                </TableCell>
+                <TableCell>
+                  <p className="font-medium text-foreground">{target.name}</p>
+                  <p className="text-xs text-muted-foreground">{target.is_active ? "active" : "disabled"}</p>
+                </TableCell>
+                <TableCell className="font-mono text-xs">{target.host}</TableCell>
+                <TableCell className="text-xs">
+                  <p>{target.check_type}</p>
+                  <p className="text-muted-foreground">{target.port ? `port ${target.port}` : "no port"}</p>
+                </TableCell>
+                <TableCell className="text-xs font-mono">{target.interval_sec}s</TableCell>
+              </TableRow>
+            ))}
+            {targets?.length === 0 && !isLoading && (
+              <TableRow>
+                <TableCell colSpan={5} className="py-8 text-center text-muted-foreground">
+                  Belum ada monitoring target. Tambahkan dari menu Monitoring Targets.
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </div>
+    </section>
   );
 }
 
@@ -358,6 +466,18 @@ function severityClass(severity: string) {
   if (severity === "critical" || severity === "error") return "status-offline";
   if (severity === "warning") return "border-warning/30 bg-warning/10 text-warning";
   return "border-primary/30 bg-primary/10 text-primary";
+}
+
+function targetStatusClass(status?: boolean | null) {
+  if (status === true) return "status-online";
+  if (status === false) return "status-offline";
+  return "border-border text-muted-foreground";
+}
+
+function targetStatus(status?: boolean | null) {
+  if (status === true) return "UP";
+  if (status === false) return "DOWN";
+  return "UNKNOWN";
 }
 
 function formatDateTime(value?: string | null) {

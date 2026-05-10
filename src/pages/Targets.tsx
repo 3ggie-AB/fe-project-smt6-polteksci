@@ -14,9 +14,6 @@ type DeviceForm = {
   model: string;
   location: string;
   device_type: string;
-  tcp_port: string;
-  ping_interval_sec: string;
-  tcp_interval_sec: string;
   snmp_community: string;
   snmp_version: string;
   ruijie_external_id: string;
@@ -30,10 +27,7 @@ const emptyForm: DeviceForm = {
   vendor: "",
   model: "",
   location: "",
-  device_type: "network",
-  tcp_port: "443",
-  ping_interval_sec: "5",
-  tcp_interval_sec: "30",
+  device_type: "access_point",
   snmp_community: "",
   snmp_version: "v2c",
   ruijie_external_id: "",
@@ -87,7 +81,7 @@ export default function Targets() {
       <div>
         <h1 className="text-2xl font-bold text-foreground">Device Registry</h1>
         <p className="text-sm text-muted-foreground">
-          Register metadata device untuk ping, TCP health check, SNMP polling, dan mapping Ruijie telemetry.
+          Inventory perangkat jaringan fisik/logis: router, switch, dan access point.
         </p>
       </div>
 
@@ -145,40 +139,10 @@ export default function Targets() {
           </Field>
           <Field label="Device Type">
             <select value={form.device_type} onChange={(e) => update("device_type", e.target.value)} className="field-input">
-              <option value="network">network</option>
-              <option value="ap">ap</option>
               <option value="router">router</option>
               <option value="switch">switch</option>
-              <option value="server">server</option>
+              <option value="access_point">access_point</option>
             </select>
-          </Field>
-          <Field label="TCP Port">
-            <input
-              type="number"
-              min="1"
-              max="65535"
-              value={form.tcp_port}
-              onChange={(e) => update("tcp_port", e.target.value)}
-              className="field-input font-mono"
-            />
-          </Field>
-          <Field label="Ping Interval (sec)">
-            <input
-              type="number"
-              min="1"
-              value={form.ping_interval_sec}
-              onChange={(e) => update("ping_interval_sec", e.target.value)}
-              className="field-input font-mono"
-            />
-          </Field>
-          <Field label="TCP Interval (sec)">
-            <input
-              type="number"
-              min="1"
-              value={form.tcp_interval_sec}
-              onChange={(e) => update("tcp_interval_sec", e.target.value)}
-              className="field-input font-mono"
-            />
           </Field>
           <Field label="SNMP Version">
             <select value={form.snmp_version} onChange={(e) => update("snmp_version", e.target.value)} className="field-input">
@@ -217,7 +181,7 @@ export default function Targets() {
 
         <div className="flex flex-col gap-3 border-t border-border pt-4 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-xs text-muted-foreground">
-            SNMP community dikirim ke backend sebagai secret dan tidak akan muncul di response device.
+            SNMP community dikirim ke backend sebagai secret. Ping/TCP check dikelola dari menu Monitoring Targets.
           </p>
           <button
             type="submit"
@@ -245,8 +209,9 @@ export default function Targets() {
                 <TableHead>Status</TableHead>
                 <TableHead>Device</TableHead>
                 <TableHead>IP</TableHead>
-                <TableHead>Monitoring</TableHead>
-                <TableHead>SNMP / Ruijie</TableHead>
+                <TableHead>Type</TableHead>
+                <TableHead>SNMP</TableHead>
+                <TableHead>Ruijie</TableHead>
                 <TableHead>Last Seen</TableHead>
                 <TableHead className="text-right">Aksi</TableHead>
               </TableRow>
@@ -305,16 +270,9 @@ function DeviceRow({ device, onDelete }: { device: Device; onDelete: () => void 
         </div>
       </TableCell>
       <TableCell className="font-mono text-xs">{device.ip_address}</TableCell>
-      <TableCell className="text-xs">
-        <p>TCP {device.tcp_port || 443}</p>
-        <p className="text-muted-foreground">
-          ping {device.ping_interval_sec || 5}s / tcp {device.tcp_interval_sec || 30}s
-        </p>
-      </TableCell>
-      <TableCell className="text-xs">
-        <p>{device.snmp_version || "-"}</p>
-        <p className="text-muted-foreground font-mono">{device.ruijie_external_id || "-"}</p>
-      </TableCell>
+      <TableCell className="text-xs">{device.device_type || "-"}</TableCell>
+      <TableCell className="text-xs">{device.snmp_version || "-"}</TableCell>
+      <TableCell className="text-xs font-mono text-muted-foreground">{device.ruijie_external_id || "-"}</TableCell>
       <TableCell className="text-xs font-mono text-muted-foreground">{formatDateTime(device.last_seen_at)}</TableCell>
       <TableCell className="text-right">
         <button
@@ -340,10 +298,6 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
 
 function toPayload(form: DeviceForm): DevicePayload {
   const clean = (value: string) => value.trim() || undefined;
-  const numberValue = (value: string) => {
-    const parsed = Number(value);
-    return Number.isFinite(parsed) && parsed > 0 ? parsed : undefined;
-  };
 
   return {
     name: form.name.trim(),
@@ -353,9 +307,6 @@ function toPayload(form: DeviceForm): DevicePayload {
     model: clean(form.model),
     location: clean(form.location),
     device_type: clean(form.device_type),
-    tcp_port: numberValue(form.tcp_port),
-    ping_interval_sec: numberValue(form.ping_interval_sec),
-    tcp_interval_sec: numberValue(form.tcp_interval_sec),
     snmp_community: clean(form.snmp_community),
     snmp_version: clean(form.snmp_version),
     ruijie_external_id: clean(form.ruijie_external_id),

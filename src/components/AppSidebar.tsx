@@ -1,5 +1,5 @@
 import { NavLink as RouterNavLink, useNavigate } from "react-router-dom";
-import { Activity, Bell, Cpu, LayoutDashboard, LogOut, Radio, Server } from "lucide-react";
+import { Activity, Bell, Cpu, LayoutDashboard, LogOut, Radio, Server, ServerCog } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { ThemeToggle } from "./ThemeToggle";
 import { API_ORIGIN, api, clearAuthToken, getStoredUser } from "@/lib/api";
@@ -7,6 +7,7 @@ import { API_ORIGIN, api, clearAuthToken, getStoredUser } from "@/lib/api";
 const links = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { to: "/devices", label: "Devices", icon: Server },
+  { to: "/targets", label: "Monitoring Targets", icon: ServerCog },
   { to: "/stream", label: "Realtime", icon: Radio },
   { to: "/notifications", label: "Notifications", icon: Bell },
   { to: "/features", label: "ML Features", icon: Cpu },

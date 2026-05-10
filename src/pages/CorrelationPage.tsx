@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { api, FeatureResponse } from "@/lib/api";
-import { Activity, BrainCircuit, Cpu, Server, Signal, Waves } from "lucide-react";
+import { api, Device, FeatureResponse, MonitoringTarget } from "@/lib/api";
+import { Activity, BrainCircuit, Cpu, Server, ServerCog, Signal, Waves } from "lucide-react";
 import {
   Bar,
   BarChart,
@@ -12,6 +12,8 @@ import {
   YAxis,
 } from "recharts";
 
+type FeatureScope = "device" | "target";
+
 const onnxLabels = [
   "latency_rolling_avg_ms",
   "packet_loss_ratio",
@@ -21,11 +23,18 @@ const onnxLabels = [
 ];
 
 export default function CorrelationPage() {
+  const [scope, setScope] = useState<FeatureScope>("device");
   const [selectedDeviceId, setSelectedDeviceId] = useState<number | "">("");
+  const [selectedTargetId, setSelectedTargetId] = useState<number | "">("");
 
   const { data: devices, isLoading: devicesLoading } = useQuery({
     queryKey: ["devices"],
     queryFn: api.getDevices,
+  });
+
+  const { data: targets, isLoading: targetsLoading } = useQuery({
+    queryKey: ["monitoringTargets"],
+    queryFn: api.getMonitoringTargets,
   });
 
   useEffect(() => {
@@ -34,15 +43,26 @@ export default function CorrelationPage() {
     }
   }, [devices, selectedDeviceId]);
 
+  useEffect(() => {
+    if (!selectedTargetId && targets?.length) {
+      setSelectedTargetId(targets[0].id);
+    }
+  }, [targets, selectedTargetId]);
+
+  const selectedId = scope === "device" ? selectedDeviceId : selectedTargetId;
   const featureQuery = useQuery({
-    queryKey: ["features", selectedDeviceId],
-    queryFn: () => api.getFeatureVector(Number(selectedDeviceId)),
-    enabled: !!selectedDeviceId,
+    queryKey: ["features", scope, selectedId],
+    queryFn: () =>
+      scope === "device"
+        ? api.getDeviceFeatureVector(Number(selectedDeviceId))
+        : api.getTargetFeatureVector(Number(selectedTargetId)),
+    enabled: !!selectedId,
     refetchInterval: 15000,
     retry: false,
   });
 
   const selectedDevice = devices?.find((device) => device.id === Number(selectedDeviceId));
+  const selectedTarget = targets?.find((target) => target.id === Number(selectedTargetId));
   const chartData = useMemo(() => toChartData(featureQuery.data), [featureQuery.data]);
 
   return (
@@ -51,43 +71,58 @@ export default function CorrelationPage() {
         <div>
           <h1 className="text-2xl font-bold text-foreground">ML Feature Vector</h1>
           <p className="text-sm text-muted-foreground">
-            Feature vector terbaru dari in-memory feature engineering layer untuk input ONNX.
+            Feature vector terbaru untuk device inventory atau monitoring target.
           </p>
         </div>
-        <select
-          value={selectedDeviceId}
-          onChange={(e) => setSelectedDeviceId(e.target.value ? Number(e.target.value) : "")}
-          className="rounded-md border border-border bg-secondary px-3 py-2 text-sm text-secondary-foreground"
-        >
-          <option value="">{devicesLoading ? "Memuat device..." : "Pilih device"}</option>
-          {devices?.map((device) => (
-            <option key={device.id} value={device.id}>
-              {device.name} - {device.ip_address}
-            </option>
-          ))}
-        </select>
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <div className="flex rounded-md border border-border bg-secondary/60 p-1">
+            {(["device", "target"] as const).map((item) => (
+              <button
+                key={item}
+                type="button"
+                onClick={() => setScope(item)}
+                className={`rounded-sm px-4 py-2 text-sm font-medium transition-colors ${
+                  scope === item
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                {item === "device" ? "Device" : "Target"}
+              </button>
+            ))}
+          </div>
+          {scope === "device" ? (
+            <select
+              value={selectedDeviceId}
+              onChange={(e) => setSelectedDeviceId(e.target.value ? Number(e.target.value) : "")}
+              className="rounded-md border border-border bg-secondary px-3 py-2 text-sm text-secondary-foreground"
+            >
+              <option value="">{devicesLoading ? "Memuat device..." : "Pilih device"}</option>
+              {devices?.map((device) => (
+                <option key={device.id} value={device.id}>
+                  {device.name} - {device.ip_address}
+                </option>
+              ))}
+            </select>
+          ) : (
+            <select
+              value={selectedTargetId}
+              onChange={(e) => setSelectedTargetId(e.target.value ? Number(e.target.value) : "")}
+              className="rounded-md border border-border bg-secondary px-3 py-2 text-sm text-secondary-foreground"
+            >
+              <option value="">{targetsLoading ? "Memuat target..." : "Pilih target"}</option>
+              {targets?.map((target) => (
+                <option key={target.id} value={target.id}>
+                  {target.name} - {target.host}
+                </option>
+              ))}
+            </select>
+          )}
+        </div>
       </div>
 
-      {selectedDevice && (
-        <div className="card-glass rounded-lg p-4">
-          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-md bg-primary/10 text-primary">
-                <Server className="h-5 w-5" />
-              </div>
-              <div>
-                <p className="font-semibold text-foreground">{selectedDevice.name}</p>
-                <p className="text-xs font-mono text-muted-foreground">
-                  {selectedDevice.ip_address} / {selectedDevice.device_type || "network"} / {selectedDevice.vendor || "unknown"}
-                </p>
-              </div>
-            </div>
-            <span className="rounded-full border border-border bg-secondary px-2 py-1 text-xs font-mono text-muted-foreground">
-              workspace {selectedDevice.workspace?.slug || selectedDevice.workspace_id}
-            </span>
-          </div>
-        </div>
-      )}
+      {scope === "device" && selectedDevice && <DeviceFeatureHeader device={selectedDevice} />}
+      {scope === "target" && selectedTarget && <TargetFeatureHeader target={selectedTarget} />}
 
       {featureQuery.isLoading && (
         <div className="grid grid-cols-1 gap-4 md:grid-cols-5">
@@ -110,9 +145,14 @@ export default function CorrelationPage() {
 
           <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
             <section className="card-glass rounded-lg p-4 xl:col-span-2">
-              <div className="mb-4 flex items-center gap-2">
-                <Signal className="h-5 w-5 text-accent" />
-                <h2 className="text-lg font-semibold text-foreground">Feature Scale</h2>
+              <div className="mb-4 flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <Signal className="h-5 w-5 text-accent" />
+                  <h2 className="text-lg font-semibold text-foreground">Feature Scale</h2>
+                </div>
+                <span className="font-mono text-xs text-muted-foreground">
+                  {formatDateTime(featureQuery.data.features.timestamp)}
+                </span>
               </div>
               <div className="h-72">
                 <ResponsiveContainer width="100%" height="100%">
@@ -141,10 +181,14 @@ export default function CorrelationPage() {
                 <h2 className="text-lg font-semibold text-foreground">ONNX Input</h2>
               </div>
               <div className="space-y-3">
-                {featureQuery.data.onnx_input.map((value, index) => (
-                  <div key={onnxLabels[index]} className="rounded-md border border-border bg-secondary/50 px-3 py-2">
-                    <p className="text-[11px] text-muted-foreground">{index}. {onnxLabels[index]}</p>
-                    <p className="font-mono text-sm font-semibold text-foreground">{formatNumber(value)}</p>
+                {onnxLabels.map((label, index) => (
+                  <div key={label} className="rounded-md border border-border bg-secondary/50 px-3 py-2">
+                    <p className="text-[11px] text-muted-foreground">
+                      {index}. {label}
+                    </p>
+                    <p className="font-mono text-sm font-semibold text-foreground">
+                      {formatNumber(featureQuery.data.onnx_input[index] ?? 0)}
+                    </p>
                   </div>
                 ))}
               </div>
@@ -156,14 +200,60 @@ export default function CorrelationPage() {
   );
 }
 
+function DeviceFeatureHeader({ device }: { device: Device }) {
+  return (
+    <div className="card-glass rounded-lg p-4">
+      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-md bg-primary/10 text-primary">
+            <Server className="h-5 w-5" />
+          </div>
+          <div>
+            <p className="font-semibold text-foreground">{device.name}</p>
+            <p className="text-xs font-mono text-muted-foreground">
+              {device.ip_address} / {device.device_type || "device"} / {device.vendor || "unknown"}
+            </p>
+          </div>
+        </div>
+        <span className="rounded-full border border-border bg-secondary px-2 py-1 text-xs font-mono text-muted-foreground">
+          device #{device.id}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+function TargetFeatureHeader({ target }: { target: MonitoringTarget }) {
+  return (
+    <div className="card-glass rounded-lg p-4">
+      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-md bg-accent/10 text-accent">
+            <ServerCog className="h-5 w-5" />
+          </div>
+          <div>
+            <p className="font-semibold text-foreground">{target.name}</p>
+            <p className="text-xs font-mono text-muted-foreground">
+              {target.host} / {target.check_type} / {target.port ? `port ${target.port}` : "no port"}
+            </p>
+          </div>
+        </div>
+        <span className="rounded-full border border-border bg-secondary px-2 py-1 text-xs font-mono text-muted-foreground">
+          target #{target.id}
+        </span>
+      </div>
+    </div>
+  );
+}
+
 function FeatureCards({ data }: { data: FeatureResponse }) {
   const features = data.features;
   const cards = [
-    { label: "Latency Avg", value: `${formatNumber(features.latency_rolling_avg_ms)} ms`, icon: Signal, accent: "text-warning" },
-    { label: "Packet Loss", value: formatRatio(features.packet_loss_ratio), icon: Waves, accent: "text-destructive" },
-    { label: "AP Load", value: formatNumber(features.ap_load_score), icon: Cpu, accent: "text-primary" },
-    { label: "Roaming", value: formatNumber(features.roaming_frequency), icon: Activity, accent: "text-accent" },
-    { label: "Anomaly", value: formatNumber(features.traffic_anomaly_score), icon: BrainCircuit, accent: "text-success" },
+    { label: "Latency Avg", value: `${formatNumber(features.latency_rolling_avg_ms ?? 0)} ms`, icon: Signal, accent: "text-warning" },
+    { label: "Packet Loss", value: formatRatio(features.packet_loss_ratio ?? 0), icon: Waves, accent: "text-destructive" },
+    { label: "AP Load", value: formatNumber(features.ap_load_score ?? 0), icon: Cpu, accent: "text-primary" },
+    { label: "Roaming", value: formatNumber(features.roaming_frequency ?? 0), icon: Activity, accent: "text-accent" },
+    { label: "Anomaly", value: formatNumber(features.traffic_anomaly_score ?? 0), icon: BrainCircuit, accent: "text-success" },
   ];
 
   return (
@@ -185,7 +275,7 @@ function toChartData(data?: FeatureResponse) {
   if (!data) return [];
   return onnxLabels.map((label, index) => ({
     label: label.replace(/_/g, " ").replace(" ratio", ""),
-    value: data.onnx_input[index],
+    value: data.onnx_input[index] ?? 0,
   }));
 }
 
@@ -197,4 +287,14 @@ function formatNumber(value: number) {
 
 function formatRatio(value: number) {
   return `${formatNumber(value * 100)}%`;
+}
+
+function formatDateTime(value?: string | null) {
+  if (!value) return "-";
+  return new Date(value).toLocaleString("id-ID", {
+    day: "2-digit",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 }

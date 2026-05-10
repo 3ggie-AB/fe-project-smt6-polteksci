@@ -7,6 +7,7 @@ import { AppLayout } from "@/components/AppLayout";
 import { PasswordGate } from "@/components/PasswordGate";
 import Dashboard from "@/pages/Dashboard";
 import Targets from "@/pages/Targets";
+import MonitoringTargets from "@/pages/MonitoringTargets";
 import PingLog from "@/pages/PingLog";
 import CorrelationPage from "@/pages/CorrelationPage";
 import LoginPage from "@/pages/LoginPage";
@@ -42,6 +43,14 @@ const App = () => (
             }
           />
           <Route
+            path="/targets"
+            element={
+              <PasswordGate>
+                <AppLayout><MonitoringTargets /></AppLayout>
+              </PasswordGate>
+            }
+          />
+          <Route
             path="/stream"
             element={
               <PasswordGate>
@@ -65,8 +74,8 @@ const App = () => (
               </PasswordGate>
             }
           />
-          <Route path="/targets" element={<Navigate to="/devices" replace />} />
-          <Route path="/pings" element={<Navigate to="/stream" replace />} />
+          <Route path="/monitoring-targets" element={<Navigate to="/targets" replace />} />
+          <Route path="/pings" element={<Navigate to="/targets" replace />} />
           <Route path="/correlation" element={<Navigate to="/features" replace />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
