@@ -11,6 +11,7 @@ import PingLog from "@/pages/PingLog";
 import SurveyPage from "@/pages/SurveyPage";
 import CorrelationPage from "@/pages/CorrelationPage";
 import LoginPage from "@/pages/LoginPage";
+import LandingPage from "@/pages/LandingPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -22,8 +23,10 @@ const App = () => (
       <Sonner />
       <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <Routes>
-          {/* Public: survey as landing page */}
-          <Route path="/" element={<SurveyPage />} />
+          {/* Public landing page explaining the system */}
+          <Route path="/" element={<LandingPage />} />
+          {/* Public survey */}
+          <Route path="/survey" element={<SurveyPage />} />
           {/* Login page */}
           <Route path="/login" element={<LoginPage />} />
           {/* Protected routes */}
