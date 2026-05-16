@@ -85,14 +85,14 @@ export default function LandingPage() {
             <StatusCard
               icon={Database}
               label="MySQL"
-              title={health?.checks.mysql?.database || "metadata"}
-              value={health?.checks.mysql?.status || (healthError ? "unavailable" : "checking")}
+              title={health?.checks?.mysql?.database || "metadata"}
+              value={health?.checks?.mysql?.status || (healthError ? "unavailable" : "checking")}
             />
             <StatusCard
               icon={Radio}
               label="Collectors"
               title="active / snmp / syslog"
-              value={collectorStatus(health?.checks.collectors)}
+              value={collectorStatus(health?.checks?.collectors)}
             />
             <StatusCard
               icon={Activity}
