@@ -10,7 +10,8 @@ import { Badge } from "@/components/ui/badge";
 
 export default function DeviceDetail() {
   const [, params] = useRoute("/devices/:id");
-  const deviceId = parseInt(params?.id || "0");
+  const routeParams = params as { id?: string } | null;
+  const deviceId = Number.parseInt(routeParams?.id ?? "0", 10);
   const { toast } = useToast();
 
   const { data: deviceData, isLoading: isDeviceLoading } = useGetDevice(deviceId, {
@@ -24,7 +25,7 @@ export default function DeviceDetail() {
   const device = deviceData?.data;
 
   const handleLivePing = () => {
-    pingMutation.mutate({ data: { count: 4 } }, {
+    pingMutation.mutate({ id: deviceId, data: { count: 4 } }, {
       onSuccess: (res) => {
         toast({
           title: "Ping completed",
