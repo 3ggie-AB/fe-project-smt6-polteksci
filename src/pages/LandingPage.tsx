@@ -38,7 +38,7 @@ export default function LandingPage() {
             <img src="/logos.webp" alt="NetMonitor Logo" className="h-10 w-10 animate-heartbeat" />
             <div>
               <p className="font-mono text-lg font-bold text-foreground">NetMonitor</p>
-              <p className="text-xs text-muted-foreground">Go + Gin + MySQL + InfluxDB</p>
+              <p className="text-xs text-muted-foreground">Go Fiber + GORM + MySQL</p>
             </div>
           </div>
           <ThemeToggle />
@@ -48,13 +48,13 @@ export default function LandingPage() {
           <section className="max-w-3xl space-y-5">
             <div className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-xs font-mono text-primary">
               <ShieldCheck className="h-3.5 w-3.5" />
-              API v2.1
+              API v4.0
             </div>
             <div className="space-y-3">
               <h1 className="text-4xl font-bold text-foreground md:text-6xl">NetMonitor API</h1>
               <p className="max-w-2xl text-sm leading-relaxed text-muted-foreground md:text-base">
-                Dashboard observability jaringan untuk inventory Devices, active Monitoring Targets, realtime SSE,
-                notifications, dan ML-ready feature vector.
+                Dashboard observability jaringan untuk inventory Devices, monitoring configs, device status,
+                alerts, notifications, topology, dan ML observability.
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-3">
@@ -70,7 +70,7 @@ export default function LandingPage() {
                 className="inline-flex items-center gap-2 rounded-md border border-border bg-secondary px-5 py-2.5 text-sm font-medium text-secondary-foreground hover:bg-secondary/80"
               >
                 <ServerCog className="h-4 w-4" />
-                Monitoring Targets
+                Monitoring Configs
               </Link>
             </div>
           </section>
@@ -85,14 +85,14 @@ export default function LandingPage() {
             <StatusCard
               icon={Database}
               label="MySQL"
-              title={health?.checks?.mysql?.database || "metadata"}
-              value={health?.checks?.mysql?.status || (healthError ? "unavailable" : "checking")}
+              title={health?.mysql?.database || "netmonitor"}
+              value={health?.mysql ? `${health.mysql.host}:${health.mysql.port}` : healthError ? "unavailable" : "checking"}
             />
             <StatusCard
               icon={Radio}
-              label="Collectors"
-              title="active / snmp / syslog"
-              value={collectorStatus(health?.checks?.collectors)}
+              label="Stack"
+              title={health?.stack || "fiber + gorm + mysql"}
+              value={health?.status || (healthError ? "offline" : "checking")}
             />
             <StatusCard
               icon={Activity}
@@ -143,10 +143,4 @@ function StatusCard({
       <p className={`mt-2 font-mono text-xs ${ok ? "text-success" : "text-muted-foreground"}`}>{value}</p>
     </div>
   );
-}
-
-function collectorStatus(collectors?: Record<string, string>) {
-  if (!collectors) return "checking";
-  const enabled = Object.values(collectors).filter((value) => value === "enabled").length;
-  return `${enabled}/${Object.keys(collectors).length} enabled`;
 }

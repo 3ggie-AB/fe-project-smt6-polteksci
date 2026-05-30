@@ -18,78 +18,59 @@ type RequestOptions = RequestInit & {
   root?: boolean;
 };
 
+type DataEnvelope<T> = {
+  data: T;
+};
+
 export type RoleName = "SUPER_ADMIN" | "ADMIN" | "USER";
-export type Severity = "critical" | "warning" | "info" | "error" | string;
+export type DeviceType = "AP" | "SERVICE";
+export type DeviceStatusValue = "ONLINE" | "OFFLINE" | "WARNING";
+export type AlertSeverity = "INFO" | "WARNING" | "CRITICAL";
+export type AlertStatus = "ACTIVE" | "RESOLVED";
+export type AnomalySeverity = "WARNING" | "CRITICAL";
 
-export interface Workspace {
+export interface Session {
   id: number;
-  name: string;
-  slug: string;
+  user_id: number;
+  expired_at: string;
   created_at?: string;
-  updated_at?: string;
-}
-
-export interface Role {
-  id: number;
-  name: RoleName;
-  created_at?: string;
-  updated_at?: string;
 }
 
 export interface User {
   id: number;
-  workspace_id: number;
-  workspace?: Workspace;
-  role_id: number;
-  role?: Role;
-  email: string;
   name: string;
-  avatar_url?: string;
-  is_active: boolean;
-  last_login_at?: string | null;
+  email: string;
+  role: RoleName;
   created_at?: string;
   updated_at?: string;
 }
 
+export interface UserPayload {
+  name: string;
+  email: string;
+  password?: string;
+  role: RoleName;
+}
+
 export interface LoginRequest {
-  email?: string;
+  email: string;
   password: string;
 }
 
 export interface LoginResponse {
   message?: string;
   token: string;
+  session?: Session;
   user: User;
-}
-
-export interface Identity {
-  user_id: number;
-  email: string;
-  role: RoleName;
-  workspace_id: number;
 }
 
 export interface HealthResponse {
   status: string;
-  time: string;
-  checks: {
-    mysql?: {
-      status: string;
-      database?: string;
-      error?: string;
-    };
-    influxdb?: {
-      status: string;
-      url?: string;
-      bucket?: string;
-      error?: string;
-    };
-    collectors?: {
-      active?: string;
-      ruijie?: string;
-      syslog?: string;
-      snmp?: string;
-    };
+  stack: string;
+  mysql: {
+    host: string;
+    port: string;
+    database: string;
   };
 }
 
@@ -102,84 +83,182 @@ export interface ApiInfo {
 
 export interface Device {
   id: number;
-  workspace_id: number;
-  workspace?: Workspace;
   name: string;
-  ip_address: string;
-  mac_address?: string;
+  ip: string;
+  type: DeviceType | string;
   vendor?: string;
-  model?: string;
   location?: string;
-  device_type?: string;
-  snmp_version?: string;
-  ruijie_external_id?: string;
-  is_active: boolean;
-  last_seen_at?: string | null;
+  status: DeviceStatusValue | string;
   created_at?: string;
   updated_at?: string;
 }
 
 export interface DevicePayload {
   name: string;
-  ip_address: string;
-  mac_address?: string;
+  ip: string;
+  type: DeviceType | string;
   vendor?: string;
-  model?: string;
   location?: string;
-  device_type?: string;
-  snmp_community?: string;
-  snmp_version?: string;
-  ruijie_external_id?: string;
-  is_active?: boolean;
+  status?: DeviceStatusValue | string;
 }
 
-export type MonitoringCheckType = "ping" | "tcp" | "http" | "url" | "server" | string;
-
-export interface MonitoringTarget {
+export interface MonitoringConfig {
   id: number;
-  workspace_id: number;
-  name: string;
-  host: string;
-  check_type: MonitoringCheckType;
-  port: number;
-  interval_sec: number;
-  timeout_sec: number;
-  description?: string;
-  is_active: boolean;
-  last_status?: boolean | null;
+  device_id: number;
+  device?: Device;
+  ping_enabled: boolean;
+  tcp_enabled: boolean;
+  ping_interval: number;
+  tcp_interval: number;
+  monitored_port: number;
   created_at?: string;
   updated_at?: string;
 }
 
-export interface MonitoringTargetPayload {
-  name: string;
-  host: string;
-  check_type: MonitoringCheckType;
-  port?: number;
-  interval_sec?: number;
-  timeout_sec?: number;
-  description?: string;
-  is_active?: boolean;
+export interface MonitoringConfigPayload {
+  device_id: number;
+  ping_enabled: boolean;
+  tcp_enabled: boolean;
+  ping_interval: number;
+  tcp_interval: number;
+  monitored_port: number;
+}
+
+export interface DeviceStatus {
+  id: number;
+  device_id: number;
+  device?: Device;
+  latency: number;
+  packet_loss: number;
+  cpu_usage?: number | null;
+  memory_usage?: number | null;
+  last_seen: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface DeviceStatusPayload {
+  device_id: number;
+  latency: number;
+  packet_loss: number;
+  cpu_usage?: number | null;
+  memory_usage?: number | null;
+  last_seen: string;
+}
+
+export interface Alert {
+  id: number;
+  device_id: number;
+  device?: Device;
+  severity: AlertSeverity | string;
+  message: string;
+  status: AlertStatus | string;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface AlertPayload {
+  device_id: number;
+  severity: AlertSeverity | string;
+  message: string;
+  status: AlertStatus | string;
 }
 
 export interface Notification {
   id: number;
-  workspace_id: number;
-  user_id: number | null;
-  device_id: number | null;
-  target_id?: number | null;
-  type: string;
-  severity: Severity;
+  user_id: number;
+  alert_id: number;
+  alert?: Alert;
   title: string;
   message: string;
-  read_at: string | null;
-  created_at: string;
+  is_read: boolean;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface NotificationPayload {
+  user_id: number;
+  alert_id: number;
+  title: string;
+  message: string;
+  is_read?: boolean;
+}
+
+export interface ActivityLog {
+  id: number;
+  user_id: number;
+  user?: User;
+  action: string;
+  description: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface ActivityLogPayload {
+  user_id: number;
+  action: string;
+  description: string;
+}
+
+export interface NetworkTopology {
+  id: number;
+  source_device_id: number;
+  target_device_id: number;
+  source_device?: Device;
+  target_device?: Device;
+  relation_type: string;
+  status: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface NetworkTopologyPayload {
+  source_device_id: number;
+  target_device_id: number;
+  relation_type: string;
+  status: string;
+}
+
+export interface MLPrediction {
+  id: number;
+  device_id: number;
+  device?: Device;
+  prediction_type: string;
+  prediction_value: number;
+  confidence_score: number;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface MLPredictionPayload {
+  device_id: number;
+  prediction_type: string;
+  prediction_value: number;
+  confidence_score: number;
+}
+
+export interface MLAnomaly {
+  id: number;
+  device_id: number;
+  device?: Device;
+  anomaly_score: number;
+  prediction: string;
+  severity: AnomalySeverity | string;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface MLAnomalyPayload {
+  device_id: number;
+  anomaly_score: number;
+  prediction: string;
+  severity: AnomalySeverity | string;
 }
 
 export interface RealtimeEvent {
   type: string;
-  severity: Severity;
-  workspace: string;
+  severity: string;
+  workspace?: string;
   device_id?: number;
   target_id?: number;
   ip?: string;
@@ -191,8 +270,6 @@ export interface RealtimeEvent {
 
 export interface FeatureVector {
   device_id?: number;
-  target_id?: number;
-  workspace: string;
   latency_rolling_avg_ms?: number;
   packet_loss_ratio?: number;
   ap_load_score?: number;
@@ -253,16 +330,14 @@ function endpoint(path: string, root?: boolean) {
 
 async function request<T>(path: string, options?: RequestOptions): Promise<T> {
   const { noAuth, root, ...fetchOptions } = options || {};
-  const headers: Record<string, string> = {
-    ...(fetchOptions.headers as Record<string, string>),
-  };
+  const headers = new Headers(fetchOptions.headers);
 
-  if (fetchOptions.body && !headers["Content-Type"]) {
-    headers["Content-Type"] = "application/json";
+  if (fetchOptions.body && !headers.has("Content-Type")) {
+    headers.set("Content-Type", "application/json");
   }
 
   if (!noAuth && authToken) {
-    headers.Authorization = `Bearer ${authToken}`;
+    headers.set("Authorization", `Bearer ${authToken}`);
   }
 
   const res = await fetch(endpoint(path, root), {
@@ -287,12 +362,67 @@ async function request<T>(path: string, options?: RequestOptions): Promise<T> {
   }
 
   if (!res.ok) {
-    const errorPayload = data as { error?: string; message?: string } | undefined;
-    throw new Error(errorPayload?.error || errorPayload?.message || res.statusText);
+    const errorPayload = data as { error?: string; message?: string; detail?: string } | undefined;
+    const message = errorPayload?.error || errorPayload?.message || res.statusText;
+    throw new Error(errorPayload?.detail ? `${message}: ${errorPayload.detail}` : message);
   }
 
   return data as T;
 }
+
+function dataRequest<T>(path: string, options?: RequestOptions) {
+  return request<DataEnvelope<T>>(path, options).then((response) => response.data);
+}
+
+function listRequest<T>(path: string, options?: RequestOptions) {
+  return dataRequest<T[]>(path, options);
+}
+
+function createCrud<T, TPayload>(resource: string) {
+  return {
+    list: () => listRequest<T>(resource),
+    get: (id: number) => dataRequest<T>(`${resource}/${id}`),
+    create: (data: TPayload) =>
+      dataRequest<T>(resource, { method: "POST", body: JSON.stringify(data) }),
+    update: (id: number, data: Partial<TPayload>) =>
+      dataRequest<T>(`${resource}/${id}`, { method: "PUT", body: JSON.stringify(data) }),
+    patch: (id: number, data: Partial<TPayload>) =>
+      dataRequest<T>(`${resource}/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
+    delete: (id: number) => request<{ message: string }>(`${resource}/${id}`, { method: "DELETE" }),
+  };
+}
+
+function statusToFeature(status?: DeviceStatus): FeatureResponse {
+  const latency = status?.latency ?? 0;
+  const packetLossRatio = (status?.packet_loss ?? 0) / 100;
+  const cpu = status?.cpu_usage ?? 0;
+  const memory = status?.memory_usage ?? 0;
+  const anomaly = Math.max(packetLossRatio, latency > 0 ? Math.min(latency / 1000, 1) : 0);
+
+  return {
+    features: {
+      device_id: status?.device_id,
+      latency_rolling_avg_ms: latency,
+      packet_loss_ratio: packetLossRatio,
+      ap_load_score: cpu,
+      roaming_frequency: memory,
+      traffic_anomaly_score: anomaly,
+      timestamp: status?.last_seen || new Date().toISOString(),
+    },
+    onnx_input: [latency, packetLossRatio, cpu, memory, anomaly],
+  };
+}
+
+const users = createCrud<User, UserPayload>("/users");
+const devices = createCrud<Device, DevicePayload>("/devices");
+const monitoringConfigs = createCrud<MonitoringConfig, MonitoringConfigPayload>("/monitoring-configs");
+const deviceStatuses = createCrud<DeviceStatus, DeviceStatusPayload>("/device-status");
+const alerts = createCrud<Alert, AlertPayload>("/alerts");
+const notifications = createCrud<Notification, NotificationPayload>("/notifications");
+const activityLogs = createCrud<ActivityLog, ActivityLogPayload>("/activity-logs");
+const networkTopology = createCrud<NetworkTopology, NetworkTopologyPayload>("/network-topology");
+const mlPredictions = createCrud<MLPrediction, MLPredictionPayload>("/ml-predictions");
+const mlAnomalies = createCrud<MLAnomaly, MLAnomalyPayload>("/ml-anomalies");
 
 export function createStreamUrl(token = authToken) {
   const url = new URL(`${API_BASE_URL}/stream`);
@@ -318,53 +448,133 @@ export const api = {
       body: JSON.stringify(data),
       noAuth: true,
     }),
-  me: () => request<Identity>("/me"),
+  me: () => dataRequest<User>("/auth/me"),
+  logout: () => request<{ message: string }>("/auth/logout", { method: "POST" }),
 
-  getDevices: () => request<Device[]>("/devices"),
-  addDevice: (data: DevicePayload) =>
-    request<Device>("/devices", { method: "POST", body: JSON.stringify(data) }),
-  deleteDevice: (id: number) =>
-    request<{ message: string }>(`/devices/${id}`, { method: "DELETE" }),
+  getUsers: users.list,
+  getUser: users.get,
+  addUser: users.create,
+  updateUser: users.update,
+  patchUser: users.patch,
+  deleteUser: users.delete,
 
-  getMonitoringTargets: () => request<MonitoringTarget[]>("/targets"),
-  addMonitoringTarget: (data: MonitoringTargetPayload) =>
-    request<MonitoringTarget>("/targets", { method: "POST", body: JSON.stringify(data) }),
-  deleteMonitoringTarget: (id: number) =>
-    request<{ message: string }>(`/targets/${id}`, { method: "DELETE" }),
+  getDevices: devices.list,
+  getDevice: devices.get,
+  addDevice: devices.create,
+  updateDevice: devices.update,
+  patchDevice: devices.patch,
+  deleteDevice: devices.delete,
 
-  getNotifications: () => request<Notification[]>("/notifications"),
-  markNotificationRead: (id: number) =>
-    request<{ message: string }>(`/notifications/${id}/read`, { method: "POST" }),
+  getMonitoringConfigs: monitoringConfigs.list,
+  getMonitoringConfig: monitoringConfigs.get,
+  addMonitoringConfig: monitoringConfigs.create,
+  updateMonitoringConfig: monitoringConfigs.update,
+  patchMonitoringConfig: monitoringConfigs.patch,
+  deleteMonitoringConfig: monitoringConfigs.delete,
 
-  getDeviceFeatureVector: (deviceId: number) =>
-    request<FeatureResponse>(`/ml/features/${deviceId}`),
-  getTargetFeatureVector: (targetId: number) =>
-    request<FeatureResponse>(`/ml/features/targets/${targetId}`),
+  getDeviceStatuses: deviceStatuses.list,
+  getDeviceStatus: deviceStatuses.get,
+  addDeviceStatus: deviceStatuses.create,
+  updateDeviceStatus: deviceStatuses.update,
+  patchDeviceStatus: deviceStatuses.patch,
+  deleteDeviceStatus: deviceStatuses.delete,
 
-  getFeatureVector: (deviceId: number) =>
-    request<FeatureResponse>(`/ml/features/${deviceId}`),
+  getAlerts: alerts.list,
+  getAlert: alerts.get,
+  addAlert: alerts.create,
+  updateAlert: alerts.update,
+  patchAlert: alerts.patch,
+  deleteAlert: alerts.delete,
 
-  // Compatibility methods for the earlier SCI prototype pages.
-  loginWithPasswordOnly: (password: string) =>
-    request<LoginResponse>("/login", {
-      method: "POST",
-      body: JSON.stringify({ password }),
-      noAuth: true,
-    }),
-  getTargets: () => request<MonitoringTarget[]>("/targets"),
-  addTarget: (data: MonitoringTargetPayload) =>
-    request<MonitoringTarget>("/targets", { method: "POST", body: JSON.stringify(data) }),
-  deleteTarget: (id: number) =>
-    request<{ message: string }>(`/targets/${id}`, { method: "DELETE" }),
-  getLatestPings: () => request<PingResult[]>("/pings/latest"),
-  getPingHistory: (params?: { ip?: string; hours?: number }) => {
-    const searchParams = new URLSearchParams();
-    if (params?.ip) searchParams.set("ip", params.ip);
-    if (params?.hours) searchParams.set("hours", String(params.hours));
-    const qs = searchParams.toString();
-    return request<PingResult[]>(`/pings/history${qs ? `?${qs}` : ""}`);
+  getNotifications: notifications.list,
+  getNotification: notifications.get,
+  addNotification: notifications.create,
+  updateNotification: notifications.update,
+  patchNotification: notifications.patch,
+  deleteNotification: notifications.delete,
+  markNotificationRead: (id: number) => notifications.patch(id, { is_read: true }),
+
+  getActivityLogs: activityLogs.list,
+  getActivityLog: activityLogs.get,
+  addActivityLog: activityLogs.create,
+  updateActivityLog: activityLogs.update,
+  patchActivityLog: activityLogs.patch,
+  deleteActivityLog: activityLogs.delete,
+
+  getNetworkTopology: networkTopology.list,
+  getNetworkTopologyItem: networkTopology.get,
+  addNetworkTopology: networkTopology.create,
+  updateNetworkTopology: networkTopology.update,
+  patchNetworkTopology: networkTopology.patch,
+  deleteNetworkTopology: networkTopology.delete,
+
+  getMLPredictions: mlPredictions.list,
+  getMLPrediction: mlPredictions.get,
+  addMLPrediction: mlPredictions.create,
+  updateMLPrediction: mlPredictions.update,
+  patchMLPrediction: mlPredictions.patch,
+  deleteMLPrediction: mlPredictions.delete,
+
+  getMLAnomalies: mlAnomalies.list,
+  getMLAnomaly: mlAnomalies.get,
+  addMLAnomaly: mlAnomalies.create,
+  updateMLAnomaly: mlAnomalies.update,
+  patchMLAnomaly: mlAnomalies.patch,
+  deleteMLAnomaly: mlAnomalies.delete,
+
+  // Compatibility shims for older pages/components kept in the project.
+  getMonitoringTargets: monitoringConfigs.list,
+  addMonitoringTarget: monitoringConfigs.create,
+  deleteMonitoringTarget: monitoringConfigs.delete,
+  getTargets: async () => {
+    const list = await devices.list();
+    return list.map((device) => ({
+      id: device.id,
+      ip_address: device.ip,
+      label: device.name,
+      is_active: device.status !== "OFFLINE",
+      created_at: device.created_at || "",
+    }));
   },
-  getPingSummary: () => request<PingSummary[]>("/pings/summary"),
+  getPingHistory: async (params?: { ip?: string; hours?: number }) => {
+    const [statuses, deviceList] = await Promise.all([deviceStatuses.list(), devices.list()]);
+    const deviceById = new Map(deviceList.map((device) => [device.id, device]));
+    const since = params?.hours ? Date.now() - params.hours * 60 * 60 * 1000 : 0;
+    return statuses
+      .filter((status) => {
+        const device = deviceById.get(status.device_id);
+        const time = status.last_seen ? new Date(status.last_seen).getTime() : 0;
+        return (!params?.ip || device?.ip === params.ip) && (!since || time >= since);
+      })
+      .map((status) => {
+        const device = deviceById.get(status.device_id);
+        return {
+          id: status.id,
+          ip_address: device?.ip || String(status.device_id),
+          label: device?.name || `Device #${status.device_id}`,
+          is_reachable: status.packet_loss < 100,
+          latency_ms: status.latency,
+          packet_loss: status.packet_loss,
+          created_at: status.last_seen,
+        };
+      });
+  },
+  getDeviceFeatureVector: async (deviceId: number) => {
+    const statuses = await deviceStatuses.list();
+    const latest = statuses
+      .filter((status) => status.device_id === deviceId)
+      .sort((a, b) => new Date(b.last_seen).getTime() - new Date(a.last_seen).getTime())[0];
+    return statusToFeature(latest);
+  },
+  getTargetFeatureVector: async (configId: number) => {
+    const config = await monitoringConfigs.get(configId);
+    const statuses = await deviceStatuses.list();
+    const latest = statuses
+      .filter((status) => status.device_id === config.device_id)
+      .sort((a, b) => new Date(b.last_seen).getTime() - new Date(a.last_seen).getTime())[0];
+    return statusToFeature(latest);
+  },
+  getFeatureVector: (deviceId: number) => api.getDeviceFeatureVector(deviceId),
   submitSurvey: (data: SurveyPayload) =>
     request<{ message: string; avg_score: number; survey: Survey }>("/surveys", {
       method: "POST",
@@ -377,6 +587,9 @@ export const api = {
     return request<CorrelationResponse>(`/correlation${qs}`);
   },
 };
+
+export type MonitoringTarget = MonitoringConfig;
+export type MonitoringTargetPayload = MonitoringConfigPayload;
 
 export interface Target {
   id: number;

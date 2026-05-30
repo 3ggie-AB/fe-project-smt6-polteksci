@@ -23,7 +23,7 @@ export default function LoginPage() {
     setLoading(true);
     try {
       const res = await api.login({
-        email: email.trim() || undefined,
+        email: email.trim(),
         password,
       });
       setAuthSession(res.token, res.user);
@@ -48,7 +48,7 @@ export default function LoginPage() {
             <img src="/logos.webp" alt="NetMonitor Logo" className="h-10 w-10 animate-heartbeat" />
           </div>
           <h1 className="text-xl font-bold font-mono text-foreground">NetMonitor API</h1>
-          <p className="text-sm text-muted-foreground">Login lokal dengan JWT bearer token</p>
+          <p className="text-sm text-muted-foreground">Login lokal dengan opaque bearer token</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -58,8 +58,9 @@ export default function LoginPage() {
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="Email admin (opsional saat bootstrap)"
+              placeholder="admin@example.com"
               autoFocus
+              required
               className="w-full bg-secondary text-foreground text-sm rounded-md pl-10 pr-3 py-2.5 border border-border focus:outline-none focus:ring-1 focus:ring-primary font-mono"
             />
           </div>
@@ -83,7 +84,7 @@ export default function LoginPage() {
           </div>
           <button
             type="submit"
-            disabled={loading || !password}
+            disabled={loading || !email.trim() || !password}
             className="w-full inline-flex items-center justify-center gap-2 bg-primary text-primary-foreground px-4 py-2.5 rounded-md text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-50"
           >
             <ShieldCheck className="h-4 w-4" />
@@ -91,7 +92,7 @@ export default function LoginPage() {
           </button>
         </form>
         <p className="text-xs text-muted-foreground text-center">
-          Kosongkan email untuk memakai ADMIN_EMAIL dari backend saat bootstrap pertama.
+          Login pertama saat tabel user kosong akan membuat SUPER_ADMIN pertama.
         </p>
       </div>
     </div>

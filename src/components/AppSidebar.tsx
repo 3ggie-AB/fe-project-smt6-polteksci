@@ -7,10 +7,10 @@ import { API_ORIGIN, api, clearAuthToken, getStoredUser } from "@/lib/api";
 const links = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { to: "/devices", label: "Devices", icon: Server },
-  { to: "/targets", label: "Monitoring Targets", icon: ServerCog },
-  { to: "/stream", label: "Realtime", icon: Radio },
+  { to: "/targets", label: "Monitoring Configs", icon: ServerCog },
+  { to: "/device-status", label: "Device Status", icon: Radio },
   { to: "/notifications", label: "Notifications", icon: Bell },
-  { to: "/features", label: "ML Features", icon: Cpu },
+  { to: "/features", label: "ML Observability", icon: Cpu },
 ];
 
 export function AppSidebar() {
@@ -22,7 +22,12 @@ export function AppSidebar() {
     retry: false,
   });
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    try {
+      await api.logout();
+    } catch {
+      // The local session is cleared even if the backend session has already expired.
+    }
     clearAuthToken();
     navigate("/login", { replace: true });
   };
@@ -34,7 +39,7 @@ export function AppSidebar() {
           <img src="/logos.webp" alt="NetMonitor Logo" className="h-8 w-8 animate-heartbeat" />
           <span className="font-mono font-bold text-lg text-foreground">NetMonitor</span>
         </div>
-        <p className="text-xs text-muted-foreground mt-1 font-mono">API v2.1</p>
+        <p className="text-xs text-muted-foreground mt-1 font-mono">API v4.0</p>
       </div>
       <nav className="flex-1 p-3 space-y-1">
         {links.map(({ to, label, icon: Icon }) => (
@@ -60,7 +65,7 @@ export function AppSidebar() {
             {identity?.email || storedUser?.email || "Authenticated"}
           </p>
           <p className="text-[11px] text-muted-foreground font-mono">
-            {identity?.role || storedUser?.role?.name || "JWT active"}
+            {identity?.role || storedUser?.role || "Session active"}
           </p>
         </div>
         <ThemeToggle />

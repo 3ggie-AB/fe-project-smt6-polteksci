@@ -1,44 +1,34 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { api, Device, DevicePayload } from "@/lib/api";
+import { api, Device, DevicePayload, DeviceStatusValue, DeviceType } from "@/lib/api";
 import type { FormEvent, ReactNode } from "react";
 import { useState } from "react";
-import { CircleCheck, Plus, Router, Trash2, WifiOff } from "lucide-react";
+import { AlertTriangle, CircleCheck, Plus, Router, Trash2, WifiOff } from "lucide-react";
 import { toast } from "sonner";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 type DeviceForm = {
   name: string;
-  ip_address: string;
-  mac_address: string;
+  ip: string;
+  type: DeviceType;
   vendor: string;
-  model: string;
   location: string;
-  device_type: string;
-  snmp_community: string;
-  snmp_version: string;
-  ruijie_external_id: string;
-  is_active: boolean;
+  status: DeviceStatusValue;
 };
 
 const emptyForm: DeviceForm = {
   name: "",
-  ip_address: "",
-  mac_address: "",
+  ip: "",
+  type: "AP",
   vendor: "",
-  model: "",
   location: "",
-  device_type: "access_point",
-  snmp_community: "",
-  snmp_version: "v2c",
-  ruijie_external_id: "",
-  is_active: true,
+  status: "OFFLINE",
 };
 
 export default function Targets() {
   const queryClient = useQueryClient();
   const [form, setForm] = useState<DeviceForm>(emptyForm);
 
-  const { data: devices, isLoading } = useQuery({
+  const { data: devices, isLoading, error } = useQuery({
     queryKey: ["devices"],
     queryFn: api.getDevices,
     refetchInterval: 10000,
@@ -49,7 +39,7 @@ export default function Targets() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["devices"] });
       setForm(emptyForm);
-      toast.success("Device berhasil diregistrasi");
+      toast.success("Device berhasil dibuat");
     },
     onError: (err: Error) => toast.error(err.message),
   });
@@ -65,14 +55,14 @@ export default function Targets() {
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
-    if (!form.name.trim() || !form.ip_address.trim()) {
-      toast.error("Nama device dan IP address wajib diisi");
+    if (!form.name.trim() || !form.ip.trim()) {
+      toast.error("Nama device dan IP/host wajib diisi");
       return;
     }
     addMutation.mutate(toPayload(form));
   };
 
-  const update = (key: keyof DeviceForm, value: string | boolean) => {
+  const update = (key: keyof DeviceForm, value: string) => {
     setForm((current) => ({ ...current, [key]: value }));
   };
 
@@ -81,12 +71,12 @@ export default function Targets() {
       <div>
         <h1 className="text-2xl font-bold text-foreground">Device Registry</h1>
         <p className="text-sm text-muted-foreground">
-          Inventory perangkat jaringan fisik/logis: router, switch, dan access point.
+          Inventory perangkat dan service yang akan dipantau worker ping/SNMP backend.
         </p>
       </div>
 
       <form onSubmit={handleSubmit} className="card-glass rounded-lg p-4 space-y-4">
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-6">
           <Field label="Nama Device *">
             <input
               value={form.name}
@@ -96,21 +86,27 @@ export default function Targets() {
               required
             />
           </Field>
-          <Field label="IP Address *">
+          <Field label="IP / Host *">
             <input
-              value={form.ip_address}
-              onChange={(e) => update("ip_address", e.target.value)}
+              value={form.ip}
+              onChange={(e) => update("ip", e.target.value)}
               placeholder="192.168.10.20"
               className="field-input font-mono"
               required
             />
           </Field>
-          <Field label="MAC Address">
+          <Field label="Type">
+            <select value={form.type} onChange={(e) => update("type", e.target.value)} className="field-input">
+              <option value="AP">AP</option>
+              <option value="SERVICE">SERVICE</option>
+            </select>
+          </Field>
+          <Field label="Vendor">
             <input
-              value={form.mac_address}
-              onChange={(e) => update("mac_address", e.target.value)}
-              placeholder="AA:BB:CC:DD:EE:FF"
-              className="field-input font-mono"
+              value={form.vendor}
+              onChange={(e) => update("vendor", e.target.value)}
+              placeholder="Ruijie"
+              className="field-input"
             />
           </Field>
           <Field label="Location">
@@ -121,67 +117,18 @@ export default function Targets() {
               className="field-input"
             />
           </Field>
-          <Field label="Vendor">
-            <input
-              value={form.vendor}
-              onChange={(e) => update("vendor", e.target.value)}
-              placeholder="ruijie / mikrotik / cisco"
-              className="field-input"
-            />
-          </Field>
-          <Field label="Model">
-            <input
-              value={form.model}
-              onChange={(e) => update("model", e.target.value)}
-              placeholder="RG-AP820"
-              className="field-input"
-            />
-          </Field>
-          <Field label="Device Type">
-            <select value={form.device_type} onChange={(e) => update("device_type", e.target.value)} className="field-input">
-              <option value="router">router</option>
-              <option value="switch">switch</option>
-              <option value="access_point">access_point</option>
+          <Field label="Initial Status">
+            <select value={form.status} onChange={(e) => update("status", e.target.value)} className="field-input">
+              <option value="OFFLINE">OFFLINE</option>
+              <option value="ONLINE">ONLINE</option>
+              <option value="WARNING">WARNING</option>
             </select>
           </Field>
-          <Field label="SNMP Version">
-            <select value={form.snmp_version} onChange={(e) => update("snmp_version", e.target.value)} className="field-input">
-              <option value="v2c">v2c</option>
-              <option value="v3">v3</option>
-              <option value="">disabled</option>
-            </select>
-          </Field>
-          <Field label="SNMP Community">
-            <input
-              type="password"
-              value={form.snmp_community}
-              onChange={(e) => update("snmp_community", e.target.value)}
-              placeholder="public"
-              className="field-input"
-            />
-          </Field>
-          <Field label="Ruijie External ID">
-            <input
-              value={form.ruijie_external_id}
-              onChange={(e) => update("ruijie_external_id", e.target.value)}
-              placeholder="ap-lobby-01"
-              className="field-input font-mono"
-            />
-          </Field>
-          <label className="flex items-center gap-2 rounded-md border border-border bg-secondary/50 px-3 py-2.5 text-sm text-foreground">
-            <input
-              type="checkbox"
-              checked={form.is_active}
-              onChange={(e) => update("is_active", e.target.checked)}
-              className="h-4 w-4 accent-primary"
-            />
-            Active monitoring
-          </label>
         </div>
 
         <div className="flex flex-col gap-3 border-t border-border pt-4 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-xs text-muted-foreground">
-            SNMP community dikirim ke backend sebagai secret. Ping/TCP check dikelola dari menu Monitoring Targets.
+            Status akan diperbarui otomatis oleh worker berdasarkan hasil ping dan SNMP.
           </p>
           <button
             type="submit"
@@ -189,7 +136,7 @@ export default function Targets() {
             className="inline-flex items-center justify-center gap-2 bg-primary text-primary-foreground px-4 py-2 rounded-md text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-50"
           >
             <Plus className="h-4 w-4" />
-            Register Device
+            Create Device
           </button>
         </div>
       </form>
@@ -202,17 +149,18 @@ export default function Targets() {
           </div>
           <span className="text-xs text-muted-foreground font-mono">{devices?.length || 0} total</span>
         </div>
+        {error && <p className="px-4 py-3 text-sm text-destructive">{(error as Error).message}</p>}
         <div className="overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow>
                 <TableHead>Status</TableHead>
                 <TableHead>Device</TableHead>
-                <TableHead>IP</TableHead>
+                <TableHead>IP/Host</TableHead>
                 <TableHead>Type</TableHead>
-                <TableHead>SNMP</TableHead>
-                <TableHead>Ruijie</TableHead>
-                <TableHead>Last Seen</TableHead>
+                <TableHead>Vendor</TableHead>
+                <TableHead>Location</TableHead>
+                <TableHead>Created</TableHead>
                 <TableHead className="text-right">Aksi</TableHead>
               </TableRow>
             </TableHeader>
@@ -220,7 +168,7 @@ export default function Targets() {
               {isLoading &&
                 [...Array(4)].map((_, index) => (
                   <TableRow key={index}>
-                    <TableCell colSpan={7}>
+                    <TableCell colSpan={8}>
                       <div className="h-4 bg-muted rounded animate-pulse" />
                     </TableCell>
                   </TableRow>
@@ -238,7 +186,7 @@ export default function Targets() {
               ))}
               {devices?.length === 0 && !isLoading && (
                 <TableRow>
-                  <TableCell colSpan={7} className="py-8 text-center text-muted-foreground">
+                  <TableCell colSpan={8} className="py-8 text-center text-muted-foreground">
                     Belum ada device.
                   </TableCell>
                 </TableRow>
@@ -252,28 +200,24 @@ export default function Targets() {
 }
 
 function DeviceRow({ device, onDelete }: { device: Device; onDelete: () => void }) {
+  const Icon = device.status === "ONLINE" ? CircleCheck : device.status === "WARNING" ? AlertTriangle : WifiOff;
   return (
     <TableRow>
       <TableCell>
-        {device.is_active ? (
-          <CircleCheck className="h-4 w-4 text-success" />
-        ) : (
-          <WifiOff className="h-4 w-4 text-destructive" />
-        )}
+        <span className={`inline-flex items-center gap-2 rounded-full border px-2 py-0.5 text-[11px] font-mono ${statusClass(device.status)}`}>
+          <Icon className="h-3.5 w-3.5" />
+          {device.status}
+        </span>
       </TableCell>
       <TableCell>
-        <div>
-          <p className="font-medium text-foreground">{device.name}</p>
-          <p className="text-xs text-muted-foreground">
-            {[device.vendor, device.model, device.location].filter(Boolean).join(" / ") || "metadata kosong"}
-          </p>
-        </div>
+        <p className="font-medium text-foreground">{device.name}</p>
+        <p className="text-xs text-muted-foreground">device #{device.id}</p>
       </TableCell>
-      <TableCell className="font-mono text-xs">{device.ip_address}</TableCell>
-      <TableCell className="text-xs">{device.device_type || "-"}</TableCell>
-      <TableCell className="text-xs">{device.snmp_version || "-"}</TableCell>
-      <TableCell className="text-xs font-mono text-muted-foreground">{device.ruijie_external_id || "-"}</TableCell>
-      <TableCell className="text-xs font-mono text-muted-foreground">{formatDateTime(device.last_seen_at)}</TableCell>
+      <TableCell className="font-mono text-xs">{device.ip}</TableCell>
+      <TableCell className="text-xs">{device.type}</TableCell>
+      <TableCell className="text-xs">{device.vendor || "-"}</TableCell>
+      <TableCell className="text-xs">{device.location || "-"}</TableCell>
+      <TableCell className="text-xs font-mono text-muted-foreground">{formatDateTime(device.created_at)}</TableCell>
       <TableCell className="text-right">
         <button
           onClick={onDelete}
@@ -301,17 +245,18 @@ function toPayload(form: DeviceForm): DevicePayload {
 
   return {
     name: form.name.trim(),
-    ip_address: form.ip_address.trim(),
-    mac_address: clean(form.mac_address),
+    ip: form.ip.trim(),
+    type: form.type,
     vendor: clean(form.vendor),
-    model: clean(form.model),
     location: clean(form.location),
-    device_type: clean(form.device_type),
-    snmp_community: clean(form.snmp_community),
-    snmp_version: clean(form.snmp_version),
-    ruijie_external_id: clean(form.ruijie_external_id),
-    is_active: form.is_active,
+    status: form.status,
   };
+}
+
+function statusClass(status: string) {
+  if (status === "ONLINE") return "status-online";
+  if (status === "WARNING") return "border-warning/30 bg-warning/10 text-warning";
+  return "status-offline";
 }
 
 function formatDateTime(value?: string | null) {

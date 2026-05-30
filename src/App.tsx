@@ -51,7 +51,7 @@ const App = () => (
             }
           />
           <Route
-            path="/stream"
+            path="/device-status"
             element={
               <PasswordGate>
                 <AppLayout><PingLog /></AppLayout>
@@ -75,7 +75,8 @@ const App = () => (
             }
           />
           <Route path="/monitoring-targets" element={<Navigate to="/targets" replace />} />
-          <Route path="/pings" element={<Navigate to="/targets" replace />} />
+          <Route path="/pings" element={<Navigate to="/device-status" replace />} />
+          <Route path="/stream" element={<Navigate to="/device-status" replace />} />
           <Route path="/correlation" element={<Navigate to="/features" replace />} />
           <Route path="*" element={<NotFound />} />
         </Routes>

@@ -1,14 +1,15 @@
 import type { ElementType } from "react";
+import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
+  Alert,
   api,
   Device,
+  DeviceStatus,
   HealthResponse,
-  MonitoringTarget,
+  MonitoringConfig,
   Notification as NetNotification,
-  RealtimeEvent,
 } from "@/lib/api";
-import { useRealtimeEvents } from "@/hooks/use-realtime-events";
 import {
   Activity,
   AlertTriangle,
@@ -38,10 +39,22 @@ export default function Dashboard() {
     refetchInterval: 10000,
   });
 
-  const { data: targets, isLoading: targetsLoading, error: targetsError } = useQuery({
-    queryKey: ["monitoringTargets"],
-    queryFn: api.getMonitoringTargets,
+  const { data: configs, isLoading: configsLoading, error: configsError } = useQuery({
+    queryKey: ["monitoringConfigs"],
+    queryFn: api.getMonitoringConfigs,
     refetchInterval: 10000,
+  });
+
+  const { data: statuses, isLoading: statusesLoading, error: statusesError } = useQuery({
+    queryKey: ["deviceStatuses"],
+    queryFn: api.getDeviceStatuses,
+    refetchInterval: 10000,
+  });
+
+  const { data: alerts } = useQuery({
+    queryKey: ["alerts"],
+    queryFn: api.getAlerts,
+    refetchInterval: 15000,
   });
 
   const { data: notifications, isLoading: notificationsLoading } = useQuery({
@@ -50,12 +63,23 @@ export default function Dashboard() {
     refetchInterval: 15000,
   });
 
-  const realtime = useRealtimeEvents(8);
-  const activeDevices = devices?.filter((device) => device.is_active).length || 0;
-  const activeTargets = targets?.filter((target) => target.is_active).length || 0;
-  const downTargets = targets?.filter((target) => target.last_status === false).length || 0;
-  const criticalNotifications =
-    notifications?.filter((item) => item.severity === "critical" || item.severity === "error").length || 0;
+  const latestStatuses = useMemo(
+    () =>
+      [...(statuses || [])].sort(
+        (a, b) => new Date(b.last_seen).getTime() - new Date(a.last_seen).getTime(),
+      ),
+    [statuses],
+  );
+  const deviceById = useMemo(
+    () => new Map((devices || []).map((device) => [device.id, device])),
+    [devices],
+  );
+
+  const onlineDevices = devices?.filter((device) => device.status === "ONLINE").length || 0;
+  const warningDevices = devices?.filter((device) => device.status === "WARNING").length || 0;
+  const offlineDevices = devices?.filter((device) => device.status === "OFFLINE").length || 0;
+  const activeAlerts = alerts?.filter((alert) => alert.status === "ACTIVE").length || 0;
+  const unreadNotifications = notifications?.filter((item) => !item.is_read).length || 0;
 
   return (
     <div className="space-y-6">
@@ -63,60 +87,61 @@ export default function Dashboard() {
         <div>
           <h1 className="text-2xl font-bold text-foreground">Dashboard</h1>
           <p className="text-sm text-muted-foreground">
-            Overview NetMonitor: health check, device metadata, notifikasi, dan realtime event.
+            Overview NetMonitor API v4: health check, device status, monitoring config, alert, dan notifikasi.
           </p>
         </div>
         <div className="flex items-center gap-2 rounded-md border border-border bg-secondary/50 px-3 py-2">
-          <span className={`pulse-dot ${realtime.status === "open" ? "pulse-dot-online" : "pulse-dot-offline"}`} />
-          <span className="text-xs font-mono text-muted-foreground">SSE {realtime.status}</span>
+          <span className={`pulse-dot ${health?.status === "ok" ? "pulse-dot-online" : "pulse-dot-offline"}`} />
+          <span className="text-xs font-mono text-muted-foreground">{health?.status || "checking"}</span>
         </div>
       </div>
 
-      <div className="grid grid-cols-2 xl:grid-cols-6 gap-4">
+      <div className="grid grid-cols-2 gap-4 xl:grid-cols-6">
         <MetricCard
           label="Devices"
           value={devices?.length ?? (devicesLoading ? "..." : 0)}
           icon={Server}
           accent="text-primary"
         />
-        <MetricCard label="Active Device" value={activeDevices} icon={Wifi} accent="text-success" />
+        <MetricCard label="Online" value={onlineDevices} icon={Wifi} accent="text-success" />
+        <MetricCard label="Warning" value={warningDevices} icon={AlertTriangle} accent="text-warning" />
+        <MetricCard label="Offline" value={offlineDevices} icon={WifiOff} accent="text-destructive" />
         <MetricCard
-          label="Targets"
-          value={targets?.length ?? (targetsLoading ? "..." : 0)}
+          label="Configs"
+          value={configs?.length ?? (configsLoading ? "..." : 0)}
           icon={ServerCog}
           accent="text-accent"
         />
-        <MetricCard label="Down Target" value={downTargets} icon={WifiOff} accent="text-destructive" />
         <MetricCard
-          label="Unread Alert"
-          value={notifications?.length ?? (notificationsLoading ? "..." : 0)}
+          label="Active Alerts"
+          value={activeAlerts}
           icon={Bell}
-          accent={criticalNotifications > 0 ? "text-destructive" : "text-warning"}
-        />
-        <MetricCard
-          label="Realtime Event"
-          value={realtime.events.length}
-          icon={Radio}
-          accent={realtime.status === "open" ? "text-accent" : "text-destructive"}
+          accent={activeAlerts > 0 ? "text-destructive" : "text-warning"}
         />
       </div>
 
       {healthError && (
         <div className="card-glass rounded-lg p-6 text-center">
-          <WifiOff className="h-10 w-10 text-destructive mx-auto mb-3" />
-          <p className="text-muted-foreground text-sm">Gagal membaca health check backend.</p>
-          <p className="text-xs text-muted-foreground mt-1 font-mono">{(healthError as Error).message}</p>
+          <WifiOff className="mx-auto mb-3 h-10 w-10 text-destructive" />
+          <p className="text-sm text-muted-foreground">Gagal membaca health check backend.</p>
+          <p className="mt-1 font-mono text-xs text-muted-foreground">{(healthError as Error).message}</p>
         </div>
       )}
 
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
         <HealthPanel health={health} isLoading={healthLoading} />
-        <LatestEvents events={realtime.events} error={realtime.error} />
-        <UnreadNotifications notifications={notifications} isLoading={notificationsLoading} />
+        <AlertPanel alerts={alerts} />
+        <UnreadNotifications notifications={notifications} isLoading={notificationsLoading} unreadCount={unreadNotifications} />
       </div>
 
       <DeviceOverview devices={devices} isLoading={devicesLoading} error={devicesError as Error | null} />
-      <TargetOverview targets={targets} isLoading={targetsLoading} error={targetsError as Error | null} />
+      <StatusOverview
+        statuses={latestStatuses}
+        deviceById={deviceById}
+        isLoading={statusesLoading}
+        error={statusesError as Error | null}
+      />
+      <ConfigOverview configs={configs} deviceById={deviceById} isLoading={configsLoading} error={configsError as Error | null} />
     </div>
   );
 }
@@ -134,8 +159,8 @@ function MetricCard({
 }) {
   return (
     <div className="card-glass rounded-lg p-4">
-      <div className="flex items-center justify-between mb-2">
-        <span className="text-xs text-muted-foreground uppercase tracking-wider">{label}</span>
+      <div className="mb-2 flex items-center justify-between">
+        <span className="text-xs uppercase tracking-wider text-muted-foreground">{label}</span>
         <Icon className={`h-4 w-4 ${accent}`} />
       </div>
       <p className="stat-value text-foreground">{value}</p>
@@ -144,7 +169,6 @@ function MetricCard({
 }
 
 function HealthPanel({ health, isLoading }: { health?: HealthResponse; isLoading: boolean }) {
-  const checks = health?.checks;
   return (
     <section className="card-glass rounded-lg p-4 space-y-4">
       <div className="flex items-center justify-between">
@@ -155,25 +179,12 @@ function HealthPanel({ health, isLoading }: { health?: HealthResponse; isLoading
         <StatusPill status={health?.status || (isLoading ? "loading" : "unknown")} />
       </div>
 
-      {isLoading && <PanelSkeleton rows={4} />}
-      {!isLoading && checks && (
+      {isLoading && <PanelSkeleton rows={3} />}
+      {!isLoading && health && (
         <div className="space-y-3">
-          <HealthRow icon={Database} label="MySQL" value={checks.mysql?.database || "metadata"} status={checks.mysql?.status} />
-          <HealthRow icon={Database} label="InfluxDB" value={checks.influxdb?.bucket || "bucket"} status={checks.influxdb?.status} />
-          <div className="grid grid-cols-2 gap-2 pt-1">
-            {Object.entries(checks.collectors || {}).map(([name, status]) => (
-              <div key={name} className="rounded-md border border-border bg-secondary/50 px-3 py-2">
-                <p className="text-[11px] uppercase tracking-wider text-muted-foreground">{name}</p>
-                <p className="text-xs font-mono text-foreground">{status}</p>
-              </div>
-            ))}
-          </div>
-          {health?.time && (
-            <p className="flex items-center gap-2 text-xs text-muted-foreground font-mono">
-              <Clock className="h-3.5 w-3.5" />
-              {formatDateTime(health.time)}
-            </p>
-          )}
+          <HealthRow icon={Database} label="MySQL" value={`${health.mysql.host}:${health.mysql.port}`} status={health.status} />
+          <HealthRow icon={Database} label="Database" value={health.mysql.database} status={health.status} />
+          <HealthRow icon={ServerCog} label="Stack" value={health.stack} status={health.status} />
         </div>
       )}
     </section>
@@ -197,7 +208,7 @@ function HealthRow({
         <Icon className="h-4 w-4 text-accent" />
         <div className="min-w-0">
           <p className="text-sm font-medium text-foreground">{label}</p>
-          <p className="truncate text-xs font-mono text-muted-foreground">{value}</p>
+          <p className="truncate font-mono text-xs text-muted-foreground">{value}</p>
         </div>
       </div>
       <StatusPill status={status || "unknown"} />
@@ -206,11 +217,13 @@ function HealthRow({
 }
 
 function StatusPill({ status }: { status: string }) {
-  const ok = ["ok", "enabled", "running"].includes(status);
+  const normalized = status.toLowerCase();
+  const ok = ["ok", "enabled", "running", "online", "active"].includes(normalized);
+  const warning = ["warning", "loading"].includes(normalized);
   return (
     <span
       className={`shrink-0 rounded-full border px-2 py-0.5 text-[11px] font-mono ${
-        ok ? "status-online" : status === "loading" ? "border-border text-muted-foreground" : "status-offline"
+        ok ? "status-online" : warning ? "border-warning/30 bg-warning/10 text-warning" : "status-offline"
       }`}
     >
       {status}
@@ -218,120 +231,31 @@ function StatusPill({ status }: { status: string }) {
   );
 }
 
-function LatestEvents({ events, error }: { events: RealtimeEvent[]; error?: string | null }) {
+function AlertPanel({ alerts }: { alerts?: Alert[] }) {
+  const latest = [...(alerts || [])]
+    .sort((a, b) => new Date(b.created_at || "").getTime() - new Date(a.created_at || "").getTime())
+    .slice(0, 5);
+
   return (
     <section className="card-glass rounded-lg p-4 space-y-4">
       <div className="flex items-center gap-2">
-        <Radio className="h-5 w-5 text-accent" />
-        <h2 className="text-lg font-semibold text-foreground">Realtime Events</h2>
+        <ShieldAlert className="h-5 w-5 text-warning" />
+        <h2 className="text-lg font-semibold text-foreground">Alerts</h2>
       </div>
-      {error && <p className="rounded-md border border-warning/30 bg-warning/10 px-3 py-2 text-xs text-warning">{error}</p>}
-      {events.length === 0 && (
-        <p className="text-sm text-muted-foreground py-6 text-center">Belum ada event realtime pada sesi ini.</p>
-      )}
+      {latest.length === 0 && <p className="py-6 text-center text-sm text-muted-foreground">Belum ada alert.</p>}
       <div className="space-y-2">
-        {events.map((event, index) => (
-          <EventItem key={`${event.type}-${event.occurred_at}-${index}`} event={event} />
+        {latest.map((alert) => (
+          <div key={alert.id} className="rounded-md border border-border bg-secondary/40 px-3 py-2">
+            <div className="flex items-center justify-between gap-2">
+              <span className={`rounded-full border px-2 py-0.5 text-[11px] font-mono ${severityClass(alert.severity)}`}>
+                {alert.severity}
+              </span>
+              <StatusPill status={alert.status} />
+            </div>
+            <p className="mt-2 text-sm font-medium text-foreground">{alert.message}</p>
+            <p className="text-xs font-mono text-muted-foreground">device #{alert.device_id}</p>
+          </div>
         ))}
-      </div>
-    </section>
-  );
-}
-
-function EventItem({ event }: { event: RealtimeEvent }) {
-  return (
-    <div className="rounded-md border border-border bg-secondary/40 px-3 py-2">
-      <div className="flex items-center justify-between gap-2">
-        <div className="flex flex-wrap items-center gap-2">
-          <span className={`rounded-full border px-2 py-0.5 text-[11px] font-mono ${severityClass(event.severity)}`}>
-            {event.type}
-          </span>
-          {event.target_id && (
-            <span className="rounded-full border border-border bg-background/60 px-2 py-0.5 text-[11px] font-mono text-muted-foreground">
-              target #{event.target_id}
-            </span>
-          )}
-        </div>
-        <span className="text-[11px] text-muted-foreground font-mono">{formatDateTime(event.occurred_at)}</span>
-      </div>
-      <p className="mt-2 text-sm font-medium text-foreground">{event.title}</p>
-      <p className="text-xs text-muted-foreground">{event.message}</p>
-    </div>
-  );
-}
-
-function TargetOverview({
-  targets,
-  isLoading,
-  error,
-}: {
-  targets?: MonitoringTarget[];
-  isLoading: boolean;
-  error?: Error | null;
-}) {
-  return (
-    <section className="card-glass rounded-lg overflow-hidden">
-      <div className="flex items-center justify-between border-b border-border px-4 py-3">
-        <div className="flex items-center gap-2">
-          <ServerCog className="h-5 w-5 text-accent" />
-          <h2 className="text-lg font-semibold text-foreground">Monitoring Targets</h2>
-        </div>
-        <span className="text-xs text-muted-foreground font-mono">{targets?.length || 0} target</span>
-      </div>
-      {error && (
-        <div className="px-4 py-6 text-sm text-destructive">
-          <ShieldAlert className="inline h-4 w-4 mr-2" />
-          {error.message}
-        </div>
-      )}
-      <div className="overflow-x-auto">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Status</TableHead>
-              <TableHead>Target</TableHead>
-              <TableHead>Host</TableHead>
-              <TableHead>Type</TableHead>
-              <TableHead>Interval</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {isLoading &&
-              [...Array(4)].map((_, index) => (
-                <TableRow key={index}>
-                  <TableCell colSpan={5}>
-                    <div className="h-4 bg-muted rounded animate-pulse" />
-                  </TableCell>
-                </TableRow>
-              ))}
-            {targets?.map((target) => (
-              <TableRow key={target.id}>
-                <TableCell>
-                  <span className={`rounded-full border px-2 py-0.5 text-[11px] font-mono ${targetStatusClass(target.last_status)}`}>
-                    {targetStatus(target.last_status)}
-                  </span>
-                </TableCell>
-                <TableCell>
-                  <p className="font-medium text-foreground">{target.name}</p>
-                  <p className="text-xs text-muted-foreground">{target.is_active ? "active" : "disabled"}</p>
-                </TableCell>
-                <TableCell className="font-mono text-xs">{target.host}</TableCell>
-                <TableCell className="text-xs">
-                  <p>{target.check_type}</p>
-                  <p className="text-muted-foreground">{target.port ? `port ${target.port}` : "no port"}</p>
-                </TableCell>
-                <TableCell className="text-xs font-mono">{target.interval_sec}s</TableCell>
-              </TableRow>
-            ))}
-            {targets?.length === 0 && !isLoading && (
-              <TableRow>
-                <TableCell colSpan={5} className="py-8 text-center text-muted-foreground">
-                  Belum ada monitoring target. Tambahkan dari menu Monitoring Targets.
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
       </div>
     </section>
   );
@@ -340,28 +264,35 @@ function TargetOverview({
 function UnreadNotifications({
   notifications,
   isLoading,
+  unreadCount,
 }: {
   notifications?: NetNotification[];
   isLoading: boolean;
+  unreadCount: number;
 }) {
+  const latestUnread = (notifications || []).filter((item) => !item.is_read).slice(0, 6);
+
   return (
     <section className="card-glass rounded-lg p-4 space-y-4">
-      <div className="flex items-center gap-2">
-        <Bell className="h-5 w-5 text-warning" />
-        <h2 className="text-lg font-semibold text-foreground">Unread Notifications</h2>
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <Bell className="h-5 w-5 text-warning" />
+          <h2 className="text-lg font-semibold text-foreground">Unread Notifications</h2>
+        </div>
+        <span className="text-xs font-mono text-muted-foreground">{unreadCount} unread</span>
       </div>
       {isLoading && <PanelSkeleton rows={3} />}
-      {notifications?.length === 0 && (
-        <p className="text-sm text-muted-foreground py-6 text-center">Tidak ada notifikasi unread.</p>
+      {latestUnread.length === 0 && !isLoading && (
+        <p className="py-6 text-center text-sm text-muted-foreground">Tidak ada notifikasi unread.</p>
       )}
       <div className="space-y-2">
-        {notifications?.slice(0, 6).map((item) => (
+        {latestUnread.map((item) => (
           <div key={item.id} className="rounded-md border border-border bg-secondary/40 px-3 py-2">
             <div className="flex items-center justify-between gap-2">
-              <span className={`rounded-full border px-2 py-0.5 text-[11px] font-mono ${severityClass(item.severity)}`}>
-                {item.severity}
+              <span className="rounded-full border border-border bg-background/60 px-2 py-0.5 text-[11px] font-mono text-muted-foreground">
+                alert #{item.alert_id}
               </span>
-              <span className="text-[11px] text-muted-foreground font-mono">{formatDateTime(item.created_at)}</span>
+              <span className="font-mono text-[11px] text-muted-foreground">{formatDateTime(item.created_at)}</span>
             </div>
             <p className="mt-2 text-sm font-medium text-foreground">{item.title}</p>
             <p className="text-xs text-muted-foreground">{item.message}</p>
@@ -386,13 +317,13 @@ function DeviceOverview({
       <div className="flex items-center justify-between border-b border-border px-4 py-3">
         <div className="flex items-center gap-2">
           <Server className="h-5 w-5 text-primary" />
-          <h2 className="text-lg font-semibold text-foreground">Device Metadata</h2>
+          <h2 className="text-lg font-semibold text-foreground">Device Inventory</h2>
         </div>
-        <span className="text-xs text-muted-foreground font-mono">{devices?.length || 0} device</span>
+        <span className="text-xs font-mono text-muted-foreground">{devices?.length || 0} device</span>
       </div>
       {error && (
         <div className="px-4 py-6 text-sm text-destructive">
-          <ShieldAlert className="inline h-4 w-4 mr-2" />
+          <ShieldAlert className="mr-2 inline h-4 w-4" />
           {error.message}
         </div>
       )}
@@ -402,10 +333,10 @@ function DeviceOverview({
             <TableRow>
               <TableHead>Status</TableHead>
               <TableHead>Device</TableHead>
-              <TableHead>IP</TableHead>
+              <TableHead>IP/Host</TableHead>
               <TableHead>Vendor</TableHead>
               <TableHead>Type</TableHead>
-              <TableHead>Last Seen</TableHead>
+              <TableHead>Location</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -420,28 +351,175 @@ function DeviceOverview({
             {devices?.map((device) => (
               <TableRow key={device.id}>
                 <TableCell>
-                  {device.is_active ? (
-                    <CircleCheck className="h-4 w-4 text-success" />
-                  ) : (
-                    <AlertTriangle className="h-4 w-4 text-destructive" />
-                  )}
+                  <StatusPill status={device.status} />
                 </TableCell>
                 <TableCell>
-                  <div>
-                    <p className="font-medium text-foreground">{device.name}</p>
-                    <p className="text-xs text-muted-foreground">{device.location || "No location"}</p>
-                  </div>
+                  <p className="font-medium text-foreground">{device.name}</p>
+                  <p className="text-xs text-muted-foreground">device #{device.id}</p>
                 </TableCell>
-                <TableCell className="font-mono text-xs">{device.ip_address}</TableCell>
+                <TableCell className="font-mono text-xs">{device.ip}</TableCell>
                 <TableCell className="text-xs">{device.vendor || "-"}</TableCell>
-                <TableCell className="text-xs">{device.device_type || "network"}</TableCell>
-                <TableCell className="text-xs font-mono">{formatDateTime(device.last_seen_at)}</TableCell>
+                <TableCell className="text-xs">{device.type || "-"}</TableCell>
+                <TableCell className="text-xs">{device.location || "-"}</TableCell>
               </TableRow>
             ))}
             {devices?.length === 0 && !isLoading && (
               <TableRow>
                 <TableCell colSpan={6} className="py-8 text-center text-muted-foreground">
                   Belum ada device. Tambahkan device dari menu Devices.
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </div>
+    </section>
+  );
+}
+
+function StatusOverview({
+  statuses,
+  deviceById,
+  isLoading,
+  error,
+}: {
+  statuses: DeviceStatus[];
+  deviceById: Map<number, Device>;
+  isLoading: boolean;
+  error?: Error | null;
+}) {
+  return (
+    <section className="card-glass rounded-lg overflow-hidden">
+      <div className="flex items-center justify-between border-b border-border px-4 py-3">
+        <div className="flex items-center gap-2">
+          <Radio className="h-5 w-5 text-accent" />
+          <h2 className="text-lg font-semibold text-foreground">Latest Device Status</h2>
+        </div>
+        <span className="text-xs font-mono text-muted-foreground">{statuses.length} sample</span>
+      </div>
+      {error && <div className="px-4 py-6 text-sm text-destructive">{error.message}</div>}
+      <div className="overflow-x-auto">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Device</TableHead>
+              <TableHead>Latency</TableHead>
+              <TableHead>Packet Loss</TableHead>
+              <TableHead>CPU</TableHead>
+              <TableHead>Memory</TableHead>
+              <TableHead>Last Seen</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {isLoading &&
+              [...Array(4)].map((_, index) => (
+                <TableRow key={index}>
+                  <TableCell colSpan={6}>
+                    <div className="h-4 bg-muted rounded animate-pulse" />
+                  </TableCell>
+                </TableRow>
+              ))}
+            {statuses.slice(0, 8).map((status) => {
+              const device = deviceById.get(status.device_id) || status.device;
+              return (
+                <TableRow key={status.id}>
+                  <TableCell>
+                    <p className="font-medium text-foreground">{device?.name || `Device #${status.device_id}`}</p>
+                    <p className="font-mono text-xs text-muted-foreground">{device?.ip || `id:${status.device_id}`}</p>
+                  </TableCell>
+                  <TableCell className="font-mono text-xs">{formatNumber(status.latency)} ms</TableCell>
+                  <TableCell>
+                    <span className={`rounded-full border px-2 py-0.5 text-[11px] font-mono ${packetLossClass(status.packet_loss)}`}>
+                      {formatNumber(status.packet_loss)}%
+                    </span>
+                  </TableCell>
+                  <TableCell className="font-mono text-xs">{formatOptionalNumber(status.cpu_usage)}</TableCell>
+                  <TableCell className="font-mono text-xs">{formatOptionalNumber(status.memory_usage)}</TableCell>
+                  <TableCell className="font-mono text-xs text-muted-foreground">{formatDateTime(status.last_seen)}</TableCell>
+                </TableRow>
+              );
+            })}
+            {statuses.length === 0 && !isLoading && (
+              <TableRow>
+                <TableCell colSpan={6} className="py-8 text-center text-muted-foreground">
+                  Belum ada device status.
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </div>
+    </section>
+  );
+}
+
+function ConfigOverview({
+  configs,
+  deviceById,
+  isLoading,
+  error,
+}: {
+  configs?: MonitoringConfig[];
+  deviceById: Map<number, Device>;
+  isLoading: boolean;
+  error?: Error | null;
+}) {
+  return (
+    <section className="card-glass rounded-lg overflow-hidden">
+      <div className="flex items-center justify-between border-b border-border px-4 py-3">
+        <div className="flex items-center gap-2">
+          <ServerCog className="h-5 w-5 text-primary" />
+          <h2 className="text-lg font-semibold text-foreground">Monitoring Configs</h2>
+        </div>
+        <span className="text-xs font-mono text-muted-foreground">{configs?.length || 0} config</span>
+      </div>
+      {error && <div className="px-4 py-6 text-sm text-destructive">{error.message}</div>}
+      <div className="overflow-x-auto">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Device</TableHead>
+              <TableHead>Ping</TableHead>
+              <TableHead>TCP</TableHead>
+              <TableHead>Interval</TableHead>
+              <TableHead>Port</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {isLoading &&
+              [...Array(4)].map((_, index) => (
+                <TableRow key={index}>
+                  <TableCell colSpan={5}>
+                    <div className="h-4 bg-muted rounded animate-pulse" />
+                  </TableCell>
+                </TableRow>
+              ))}
+            {configs?.map((config) => {
+              const device = deviceById.get(config.device_id) || config.device;
+              return (
+                <TableRow key={config.id}>
+                  <TableCell>
+                    <p className="font-medium text-foreground">{device?.name || `Device #${config.device_id}`}</p>
+                    <p className="font-mono text-xs text-muted-foreground">{device?.ip || `id:${config.device_id}`}</p>
+                  </TableCell>
+                  <TableCell>
+                    <StatusPill status={config.ping_enabled ? "enabled" : "disabled"} />
+                  </TableCell>
+                  <TableCell>
+                    <StatusPill status={config.tcp_enabled ? "stored" : "disabled"} />
+                  </TableCell>
+                  <TableCell className="text-xs">
+                    <p>{config.ping_interval}s ping</p>
+                    <p className="text-muted-foreground">{config.tcp_interval}s tcp</p>
+                  </TableCell>
+                  <TableCell className="font-mono text-xs">{config.monitored_port || "-"}</TableCell>
+                </TableRow>
+              );
+            })}
+            {configs?.length === 0 && !isLoading && (
+              <TableRow>
+                <TableCell colSpan={5} className="py-8 text-center text-muted-foreground">
+                  Belum ada monitoring config.
                 </TableCell>
               </TableRow>
             )}
@@ -463,21 +541,26 @@ function PanelSkeleton({ rows }: { rows: number }) {
 }
 
 function severityClass(severity: string) {
-  if (severity === "critical" || severity === "error") return "status-offline";
-  if (severity === "warning") return "border-warning/30 bg-warning/10 text-warning";
+  const normalized = severity.toUpperCase();
+  if (normalized === "CRITICAL") return "status-offline";
+  if (normalized === "WARNING") return "border-warning/30 bg-warning/10 text-warning";
   return "border-primary/30 bg-primary/10 text-primary";
 }
 
-function targetStatusClass(status?: boolean | null) {
-  if (status === true) return "status-online";
-  if (status === false) return "status-offline";
-  return "border-border text-muted-foreground";
+function packetLossClass(value: number) {
+  if (value >= 100) return "status-offline";
+  if (value > 0) return "border-warning/30 bg-warning/10 text-warning";
+  return "status-online";
 }
 
-function targetStatus(status?: boolean | null) {
-  if (status === true) return "UP";
-  if (status === false) return "DOWN";
-  return "UNKNOWN";
+function formatNumber(value?: number | null) {
+  return Number(value || 0).toLocaleString("id-ID", {
+    maximumFractionDigits: 2,
+  });
+}
+
+function formatOptionalNumber(value?: number | null) {
+  return value === null || value === undefined ? "-" : `${formatNumber(value)}%`;
 }
 
 function formatDateTime(value?: string | null) {

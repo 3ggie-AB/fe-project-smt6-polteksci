@@ -11,6 +11,8 @@ export default function Notifications() {
     refetchInterval: 15000,
   });
 
+  const unreadCount = notifications?.filter((item) => !item.is_read).length || 0;
+
   const markReadMutation = useMutation({
     mutationFn: api.markNotificationRead,
     onSuccess: () => {
@@ -25,10 +27,10 @@ export default function Notifications() {
       <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Notifications</h1>
-          <p className="text-sm text-muted-foreground">Unread notification dari workspace aktif.</p>
+          <p className="text-sm text-muted-foreground">Notifikasi dari `/api/notifications`; mark read memakai PATCH is_read.</p>
         </div>
         <div className="rounded-md border border-border bg-secondary/50 px-3 py-2 text-xs font-mono text-muted-foreground">
-          {notifications?.length || 0} unread
+          {unreadCount} unread / {notifications?.length || 0} total
         </div>
       </div>
 
@@ -61,7 +63,7 @@ export default function Notifications() {
       {notifications?.length === 0 && !isLoading && (
         <div className="card-glass rounded-lg p-12 text-center">
           <Bell className="mx-auto mb-3 h-10 w-10 text-muted-foreground" />
-          <p className="text-sm text-muted-foreground">Tidak ada notifikasi unread.</p>
+          <p className="text-sm text-muted-foreground">Belum ada notifikasi.</p>
         </div>
       )}
     </div>
@@ -82,22 +84,15 @@ function NotificationItem({
       <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
-            <span className={`rounded-full border px-2 py-0.5 text-[11px] font-mono ${severityClass(notification.severity)}`}>
-              {notification.severity}
+            <span className={`rounded-full border px-2 py-0.5 text-[11px] font-mono ${notification.is_read ? "border-border text-muted-foreground" : "status-online"}`}>
+              {notification.is_read ? "READ" : "UNREAD"}
             </span>
             <span className="rounded-full border border-border bg-secondary/70 px-2 py-0.5 text-[11px] font-mono text-muted-foreground">
-              {notification.type}
+              user #{notification.user_id}
             </span>
-            {notification.device_id && (
-              <span className="rounded-full border border-border bg-secondary/70 px-2 py-0.5 text-[11px] font-mono text-muted-foreground">
-                device #{notification.device_id}
-              </span>
-            )}
-            {notification.target_id && (
-              <span className="rounded-full border border-border bg-secondary/70 px-2 py-0.5 text-[11px] font-mono text-muted-foreground">
-                target #{notification.target_id}
-              </span>
-            )}
+            <span className="rounded-full border border-border bg-secondary/70 px-2 py-0.5 text-[11px] font-mono text-muted-foreground">
+              alert #{notification.alert_id}
+            </span>
           </div>
           <h2 className="mt-3 text-base font-semibold text-foreground">{notification.title}</h2>
           <p className="text-sm text-muted-foreground">{notification.message}</p>
@@ -106,24 +101,20 @@ function NotificationItem({
             {formatDateTime(notification.created_at)}
           </p>
         </div>
-        <button
-          type="button"
-          onClick={onRead}
-          disabled={pending}
-          className="inline-flex items-center justify-center gap-2 rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:opacity-90 disabled:opacity-50"
-        >
-          <CheckCircle2 className="h-4 w-4" />
-          Mark Read
-        </button>
+        {!notification.is_read && (
+          <button
+            type="button"
+            onClick={onRead}
+            disabled={pending}
+            className="inline-flex items-center justify-center gap-2 rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:opacity-90 disabled:opacity-50"
+          >
+            <CheckCircle2 className="h-4 w-4" />
+            Mark Read
+          </button>
+        )}
       </div>
     </article>
   );
-}
-
-function severityClass(severity: string) {
-  if (severity === "critical" || severity === "error") return "status-offline";
-  if (severity === "warning") return "border-warning/30 bg-warning/10 text-warning";
-  return "border-primary/30 bg-primary/10 text-primary";
 }
 
 function formatDateTime(value?: string | null) {
